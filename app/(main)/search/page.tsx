@@ -19,7 +19,7 @@ function segmentDotColor(segment?: string): string {
     case "Music":          return "#3b82f6";
     case "Arts & Theatre": return "#eab308";
     case "Comedy":         return "#f97316";
-    default:               return "#ef4444"; // Sports / default
+    default:               return "#ef4444";
   }
 }
 
@@ -49,18 +49,9 @@ function EventCard({ event }: { event: NormalizedEvent }) {
   const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   return (
-    <Link href={`/event/${event.id}`} className="group block" style={{ height: "100%" }}>
+    <Link href={`/event/${event.id}`} className="group search-card-link">
       <div
-        style={{
-          height: "100%",
-          background: "#13121f",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: "14px",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          transition: "border-color 0.2s, transform 0.2s, box-shadow 0.2s",
-        }}
+        className="search-card-inner"
         onMouseEnter={(e) => {
           const el = e.currentTarget as HTMLDivElement;
           el.style.borderColor = "rgba(255,255,255,0.16)";
@@ -75,20 +66,17 @@ function EventCard({ event }: { event: NormalizedEvent }) {
         }}
       >
         {/* Banner */}
-        <div style={{ width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "#1a1830", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "#1a1830", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {event.imageUrl ? (
             <img src={event.imageUrl} alt={event.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
           ) : (
             <span style={{ fontSize: "3rem", opacity: 0.15 }}>🎟️</span>
           )}
-          {/* Gradient overlay */}
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.04) 0%, transparent 60%)" }} />
-          {/* Category badge */}
           <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "5px", background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "4px 9px", fontSize: "0.7rem", fontWeight: 600, color: "#ffffff", letterSpacing: "0.03em" }}>
             <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
             {label}
           </div>
-          {/* Price badge */}
           {event.lowestPrice && (
             <div style={{ position: "absolute", bottom: "10px", right: "10px", background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "6px", padding: "3px 9px", fontSize: "0.75rem", fontWeight: 700, color: "#22c55e" }}>
               From ${event.lowestPrice}
@@ -98,7 +86,6 @@ function EventCard({ event }: { event: NormalizedEvent }) {
 
         {/* Body */}
         <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
-          {/* Matchup / title */}
           {hasTeams ? (
             <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
               <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.homeTeam}</span>
@@ -111,7 +98,6 @@ function EventCard({ event }: { event: NormalizedEvent }) {
             </h3>
           )}
 
-          {/* Meta */}
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", color: "#7b799a" }}>
               <Calendar size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
@@ -123,7 +109,6 @@ function EventCard({ event }: { event: NormalizedEvent }) {
             </div>
           </div>
 
-          {/* Footer */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
             <span style={{ fontSize: "0.78rem", color: "#7b799a" }}>{event.source || "Ticketmaster"}</span>
             <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#a99fff", display: "flex", alignItems: "center", gap: "4px", transition: "gap 0.2s" }}>
@@ -297,7 +282,7 @@ function SearchContent() {
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", alignItems: "stretch" }}>
             {filtered.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -319,6 +304,20 @@ function SearchContent() {
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        .search-card-link {
+          display: flex;
+          flex-direction: column;
+        }
+        .search-card-inner {
+          background: #13121f;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 14px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         }
         @media (max-width: 1100px) { .search-grid { grid-template-columns: repeat(3, 1fr) !important; } }
         @media (max-width: 800px)  { .search-grid { grid-template-columns: repeat(2, 1fr) !important; } }
