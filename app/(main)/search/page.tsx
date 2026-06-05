@@ -153,10 +153,10 @@ function SearchContent() {
     setSearched(true);
     setFilter("all");
     try {
-      const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const json = await res.json() as { events?: NormalizedEvent[]; error?: string };
+      const res  = await fetch(`/api/events/search?q=${encodeURIComponent(q)}`);
+      const json = await res.json() as { data?: NormalizedEvent[]; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Search failed");
-      setEvents(Array.isArray(json.events) ? json.events : []);
+      setEvents(Array.isArray(json.data) ? json.data : []);
     } catch {
       setError("Search failed. Please try again.");
     } finally {
@@ -291,7 +291,7 @@ function SearchContent() {
 
         {!searched && !loading && (
           <div style={{ textAlign: "center", padding: "100px 0" }}>
-            <div style={{ fontSize: "4.5rem", marginBottom: "20px" }}>🏟️</div>
+            <div style={{ fontSize: "4.5rem", marginBottom: "20px" }}>🏙️</div>
             <h3 className="font-syne" style={{ fontSize: "1.6rem", fontWeight: 800, color: "#ffffff", marginBottom: "10px" }}>Search any event</h3>
             <p style={{ color: "#7b799a", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", maxWidth: "400px", margin: "0 auto" }}>
               Search for sports, concerts, theater, comedy, and more.
