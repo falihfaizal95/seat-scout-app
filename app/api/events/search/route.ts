@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     const events = await getOrSet(cacheKey, () =>
       searchEvents({ query, sport, dateFrom, dateTo, city, limit: 24 })
     );
-
     return NextResponse.json({ data: events });
   } catch (err) {
     console.error("[API] events/search error:", err);

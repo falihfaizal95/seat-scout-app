@@ -4,30 +4,15 @@ import HeroSearch from "@/components/search/HeroSearch";
 import RotatingBadge from "@/components/ui/RotatingBadge";
 import RollingCounter from "@/components/ui/RollingCounter";
 import RollingSavings from "@/components/ui/RollingSavings";
+import NearbyEventsSection from "@/components/events/NearbyEventsSection";
 import { Search, BarChart3, Ticket } from "lucide-react";
 import RefreshEventsButton from "@/components/ui/RefreshEventsButton";
 import { getUpcomingPopularEvents } from "@/lib/upcomingEvents";
-import NearbyEventsSection from "@/components/events/NearbyEventsSection";
 
 const STEPS = [
-  {
-    icon: Search,
-    number: "01",
-    title: "Search Your Event",
-    description: "Enter the team, game, or event you want to attend. We'll instantly find all available listings across every major platform.",
-  },
-  {
-    icon: BarChart3,
-    number: "02",
-    title: "Compare Prices",
-    description: "View side-by-side prices from Ticketmaster, StubHub, SeatGeek, and Vivid Seats in real-time — all in one place.",
-  },
-  {
-    icon: Ticket,
-    number: "03",
-    title: "Get Best Deal",
-    description: "See the cheapest option highlighted in green. Click to purchase directly from the platform with confidence.",
-  },
+  { icon: Search,   number: "01", title: "Search Your Event",   description: "Enter the team, game, or event you want to attend. We'll instantly find all available listings across every major platform." },
+  { icon: BarChart3, number: "02", title: "Compare Prices",      description: "View side-by-side prices from Ticketmaster, StubHub, SeatGeek, and Vivid Seats in real-time — all in one place." },
+  { icon: Ticket,   number: "03", title: "Get Best Deal",        description: "See the cheapest option highlighted in green. Click to purchase directly from the platform with confidence." },
 ];
 
 const STATS = [
@@ -43,26 +28,21 @@ export default async function HomePage() {
   return (
     <div className="w-full">
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="relative flex flex-col items-center justify-center overflow-hidden text-center pt-[100px] pb-[80px] md:pt-[140px] md:pb-[200px] md:min-h-[160vh]">
         <div
           className="orb-float pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] md:h-[900px] md:w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{ background: "radial-gradient(circle, rgba(124,106,247,0.22) 0%, transparent 65%)", zIndex: 0 }}
         />
         <div className="relative z-10 mx-auto flex w-full max-w-[1200px] flex-col items-center px-6 sm:px-[60px]">
-          <div className="fade-up-0" style={{ marginBottom: "48px" }}>
-            <RotatingBadge />
-          </div>
+          <div className="fade-up-0" style={{ marginBottom: "48px" }}><RotatingBadge /></div>
           <h1 className="font-syne fade-up-1 mx-auto mb-10 max-w-[900px] text-[clamp(48px,7vw,88px)] font-[800] leading-[1.05] tracking-[-2px]">
-            Find the <em className="not-italic text-[var(--brand-light)]">Best</em><br />
-            Seat Deals
+            Find the <em className="not-italic text-[var(--brand-light)]">Best</em><br />Seat Deals
           </h1>
           <p className="fade-up-2 mx-auto max-w-[520px] text-[18px] leading-[1.7] text-[var(--text-2)]" style={{ marginBottom: "64px" }}>
             Compare ticket prices from Ticketmaster, StubHub, SeatGeek, and Vivid Seats in one place. Never overpay for seats again.
           </p>
-          <div className="fade-up-3 flex w-full flex-col items-center" style={{ marginBottom: "24px" }}>
-            <HeroSearch />
-          </div>
+          <div className="fade-up-3 flex w-full flex-col items-center" style={{ marginBottom: "24px" }}><HeroSearch /></div>
           <div className="mx-auto grid w-full max-w-[900px] grid-cols-2 gap-3 md:flex md:gap-0" style={{ marginTop: "60px" }}>
             {STATS.map((stat, i) => (
               <div
@@ -87,7 +67,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── How It Works ─────────────────────────────────────────────── */}
+      {/* How It Works */}
       <section id="how-it-works" className="w-full overflow-x-hidden bg-[var(--bg-1)] py-[60px] md:py-[100px]">
         <div className="mx-auto flex w-full max-w-[1200px] flex-col items-center px-6 sm:px-[60px]">
           <div className="section-tag text-center">HOW IT WORKS</div>
@@ -115,19 +95,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Upcoming Events ──────────────────────────────────────────── */}
+      {/* Upcoming Events */}
       <section id="results" className="w-full overflow-x-hidden bg-[var(--bg)] py-[60px] md:py-[140px]">
         <div className="mx-auto w-full max-w-[1200px] px-6 sm:px-[60px]">
-          <div className="mb-8 flex flex-col items-center text-center gap-3">
+          <div className="mb-12 flex flex-col items-center text-center gap-3">
             <div className="section-tag">UPCOMING EVENTS</div>
             <h2 className="section-title" style={{ marginBottom: 0 }}>Popular Events Near You</h2>
-            <p className="section-sub" style={{ marginBottom: 0 }}>
-              Top {upcomingEvents.length} upcoming events · Live prices
-            </p>
+            <p className="section-sub" style={{ marginBottom: 0 }}>Top {upcomingEvents.length} upcoming events · Live prices</p>
           </div>
-
           <NearbyEventsSection initialEvents={upcomingEvents} />
-
           <div style={{ marginTop: "60px", marginBottom: "40px" }} className="text-center">
             <RefreshEventsButton />
           </div>

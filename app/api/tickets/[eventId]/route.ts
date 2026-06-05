@@ -15,7 +15,6 @@ export async function GET(
   try {
     const cacheKey = ticketCacheKey(eventId);
     const tickets = await getOrSet(cacheKey, () => aggregateTickets(eventId));
-
     return NextResponse.json({ data: tickets });
   } catch (err) {
     console.error("[API] tickets error:", err);

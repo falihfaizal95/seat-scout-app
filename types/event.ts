@@ -13,40 +13,19 @@ export type Sport =
   | "Other";
 
 export const SPORTS: Sport[] = [
-  "NFL",
-  "NBA",
-  "MLB",
-  "NHL",
-  "MLS",
-  "NCAAF",
-  "NCAAB",
-  "UFC",
-  "Boxing",
-  "Tennis",
-  "Golf",
-  "Other",
+  "NFL", "NBA", "MLB", "NHL", "MLS", "NCAAF", "NCAAB", "UFC", "Boxing", "Tennis", "Golf", "Other",
 ];
 
 export const SPORT_EMOJIS: Record<Sport, string> = {
-  NFL: "🏈",
-  NBA: "🏀",
-  MLB: "⚾",
-  NHL: "🏒",
-  MLS: "⚽",
-  NCAAF: "🏈",
-  NCAAB: "🏀",
-  UFC: "🥊",
-  Boxing: "🥊",
-  Tennis: "🎾",
-  Golf: "⛳",
-  Other: "🎟️",
+  NFL: "🏈", NBA: "🏀", MLB: "⚾", NHL: "🏒", MLS: "⚽",
+  NCAAF: "🏈", NCAAB: "🏀", UFC: "🥊", Boxing: "🥊", Tennis: "🎾", Golf: "⛳", Other: "🎟️",
 };
 
 export interface NormalizedEvent {
   id: string;
   name: string;
   sport: Sport | string;
-  segment?: string;   // Top-level TM classification: "Sports" | "Music" | "Arts & Theatre" | etc.
+  segment?: string;
   league?: string;
   homeTeam?: string;
   awayTeam?: string;
@@ -56,12 +35,12 @@ export interface NormalizedEvent {
   city: string;
   state?: string;
   country: string;
-  eventDate: string; // ISO string
+  eventDate: string;
   imageUrl?: string;
   lowestPrice?: number;
   averagePrice?: number;
   url?: string;
-  source: string; // which platform this event came from
+  source: string;
   externalIds: Record<string, string>;
 }
 
