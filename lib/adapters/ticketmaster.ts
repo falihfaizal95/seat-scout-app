@@ -12,19 +12,10 @@ interface TMEvent {
   priceRanges?: Array<{ type: string; min: number; max: number; currency: string }>;
   url: string;
   _embedded?: {
-    venues?: Array<{
-      name: string;
-      city: { name: string };
-      state?: { name: string; stateCode: string };
-      country: { name: string; countryCode: string };
-    }>;
+    venues?: Array<{ name: string; city: { name: string }; state?: { name: string; stateCode: string }; country: { name: string; countryCode: string } }>;
     attractions?: Array<{ name: string; images?: Array<{ url: string }> }>;
   };
-  classifications?: Array<{
-    segment?: { name: string };
-    genre?: { name: string };
-    subGenre?: { name: string };
-  }>;
+  classifications?: Array<{ segment?: { name: string }; genre?: { name: string }; subGenre?: { name: string } }>;
 }
 
 function mapSport(classification?: TMEvent["classifications"]): string {
@@ -39,40 +30,32 @@ function mapSport(classification?: TMEvent["classifications"]): string {
 }
 
 function getBestImage(images: TMEvent["images"]): string | undefined {
-  const sorted = [...images].sort((a, b) => (b.width * b.height) - (a.width * a.height));
-  return sorted[0]?.url;
+  return [...images].sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
 }
 
 export const ticketmasterAdapter: TicketAdapter = {
   platform: "ticketmaster",
 
   async searchEvents(params: EventSearchParams): Promise<NormalizedEvent[]> {
-    if (!API_KEY) {
-      console.warn("[Ticketmaster] No API key configured");
-      return [];
-    }
-
+    if (!API_KEY) { console.warn("[Ticketmaster] No API key"); return []; }
     const url = new URL(`${BASE_URL}/events.json`);
     url.searchParams.set("apikey", API_KEY);
     url.searchParams.set("keyword", params.query);
     url.searchParams.set("classificationName", "sports");
     url.searchParams.set("size", String(params.limit || 20));
     if (params.dateFrom) url.searchParams.set("startDateTime", `${params.dateFrom}T00:00:00Z`);
-    if (params.dateTo) url.searchParams.set("endDateTime", `${params.dateTo}T23:59:59Z`);
-    if (params.city) url.searchParams.set("city", params.city);
-
+    if (params.dateTo)   url.searchParams.set("endDateTime",   `${params.dateTo}T23:59:59Z`);
+    if (params.city)     url.searchParams.set("city", params.city);
     try {
       const res = await fetch(url.toString(), { next: { revalidate: 300 } });
-      if (!res.ok) throw new Error(`Ticketmaster API error: ${res.status}`);
+      if (!res.ok) throw new Error(`TM API error: ${res.status}`);
       const data = await res.json();
       const events: TMEvent[] = data._embedded?.events || [];
-
       return events.map((e) => {
         const venue = e._embedded?.venues?.[0];
         const attractions = e._embedded?.attractions || [];
         const priceRange = e.priceRanges?.[0];
         const dateStr = e.dates.start.dateTime || `${e.dates.start.localDate}T${e.dates.start.localTime || "19:00:00"}`;
-
         return {
           id: generateEventId("tm", e.id),
           name: e.name,
@@ -103,17 +86,13 @@ export const ticketmasterAdapter: TicketAdapter = {
 
   async getTickets(externalEventId: string): Promise<TicketListing[]> {
     if (!API_KEY) return [];
-
     const url = new URL(`${BASE_URL}/events/${externalEventId}.json`);
     url.searchParams.set("apikey", API_KEY);
-
     try {
       const res = await fetch(url.toString(), { next: { revalidate: 300 } });
-      if (!res.ok) throw new Error(`Ticketmaster event fetch error: ${res.status}`);
+      if (!res.ok) throw new Error(`TM event fetch error: ${res.status}`);
       const e: TMEvent = await res.json();
-
       if (!e.priceRanges?.length) return [];
-
       return e.priceRanges.map((range, i) => ({
         id: `tm_${externalEventId}_${i}`,
         platform: "ticketmaster" as const,
