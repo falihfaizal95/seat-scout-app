@@ -34,18 +34,17 @@ function PriceTrendChart({ basePrice, eventId, days }: { basePrice: number; even
   const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
   const W = 500, H = 160, PL = 38, PR = 10, PT = 10, PB = 28;
   const iW = W - PL - PR, iH = H - PT - PB;
-
   const pts = data.map((v, i) => [PL + (i / (data.length - 1)) * iW, PT + (1 - (v - min) / range) * iH] as [number, number]);
   const lineD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
   const fillD = `${lineD} L${pts[pts.length - 1][0].toFixed(1)},${(PT + iH).toFixed(1)} L${PL},${(PT + iH).toFixed(1)} Z`;
-
   const yTicks = [min, Math.round(min + range / 2), max];
   const xTicks = [0, Math.floor(data.length / 2), data.length - 1];
+  const gradId = `fill-${eventId.replace(/[^a-z0-9]/gi, "")}`;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
       <defs>
-        <linearGradient id={`fill-${eventId.replace(/[^a-z0-9]/gi, "")}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#22c55e" stopOpacity="0.28" />
           <stop offset="100%" stopColor="#22c55e" stopOpacity="0.02" />
         </linearGradient>
@@ -59,7 +58,7 @@ function PriceTrendChart({ basePrice, eventId, days }: { basePrice: number; even
           </g>
         );
       })}
-      <path d={fillD} fill={`url(#fill-${eventId.replace(/[^a-z0-9]/gi, "")})`} />
+      <path d={fillD} fill={`url(#${gradId})`} />
       <path d={lineD} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {xTicks.map((i) => (
         <text key={i} x={(PL + (i / (data.length - 1)) * iW).toFixed(1)} y={H - 4} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="9">{dates[i]}</text>
@@ -73,7 +72,6 @@ function MarketActivityChart({ eventId }: { eventId: string }) {
   const labels = ["12 AM", "4 AM", "8 AM", "12 PM", "4 PM", "8 PM", "Now"];
   const base = [38, 28, 48, 58, 68, 82, 88];
   const data = labels.map((l, i) => ({ label: l, value: Math.min(98, Math.round(base[i] + (seeded(seed, i) - 0.5) * 18)) }));
-
   const W = 500, H = 160, PL = 30, PR = 10, PT = 10, PB = 28;
   const iW = W - PL - PR, iH = H - PT - PB;
   const bW = (iW / labels.length) * 0.55;
@@ -129,21 +127,21 @@ function TicketRow({ listing, isBest }: { listing: TicketListing; isBest: boolea
             <span style={{ background: "#22c55e", color: "#fff", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", padding: "2px 8px", borderRadius: "20px" }}>BEST DEAL</span>
           )}
         </div>
-        <div style={{ fontSize: "0.82rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>
+        <div style={{ fontSize: "0.82rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif" }}>
           {listing.row ? `Row ${listing.row}` : "General Admission"}{listing.quantity > 1 ? ` · Seats ${seatStart}–${seatEnd}` : ""}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "0 0 auto" }}>
-        <span style={{ background: `${pColor}22`, border: `1px solid ${pColor}55`, color: pColor, fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", whiteSpace: "nowrap" }}>{pName}</span>
-        <span style={{ fontSize: "0.8rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", whiteSpace: "nowrap" }}>${base} + ${fees.toFixed(2)} fees</span>
+        <span style={{ background: `${pColor}22`, border: `1px solid ${pColor}55`, color: pColor, fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", whiteSpace: "nowrap" }}>{pName}</span>
+        <span style={{ fontSize: "0.8rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", whiteSpace: "nowrap" }}>${base} + ${fees.toFixed(2)} fees</span>
       </div>
       <div style={{ flex: "0 0 auto", textAlign: "right" }}>
-        <div style={{ fontSize: "0.7rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", marginBottom: "2px" }}>Total</div>
+        <div style={{ fontSize: "0.7rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", marginBottom: "2px" }}>Total</div>
         <div className="font-syne" style={{ fontWeight: 800, fontSize: "1.25rem", color: isBest ? "#22c55e" : "#ffffff" }}>${Math.round(listing.pricePerTicket)}</div>
       </div>
       <a
         href={listing.buyUrl} target="_blank" rel="noopener noreferrer"
-        style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "6px", background: "#7c6cff", color: "#fff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "0.88rem", padding: "10px 20px", borderRadius: "10px", textDecoration: "none", transition: "background 0.2s", whiteSpace: "nowrap" }}
+        style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "6px", background: "#7c6cff", color: "#fff", fontFamily: "var(--font-syne),'Syne',sans-serif", fontWeight: 700, fontSize: "0.88rem", padding: "10px 20px", borderRadius: "10px", textDecoration: "none", transition: "background 0.2s", whiteSpace: "nowrap" }}
         onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#6a5ae0")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "#7c6cff")}
       >
@@ -158,11 +156,11 @@ interface Props {
 }
 
 export default function EventDashboard({ eventId }: Props) {
-  const [data, setData]           = useState<AggregatedTickets | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [trendDays, setTrendDays] = useState<7 | 14 | 30>(7);
+  const [data, setData]             = useState<AggregatedTickets | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [trendDays, setTrendDays]   = useState<7 | 14 | 30>(7);
   const [filterPlat, setFilterPlat] = useState<Platform | "all">("all");
-  const [sortDir, setSortDir]     = useState<"asc" | "desc">("asc");
+  const [sortDir, setSortDir]       = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     fetch(`/api/tickets/${encodeURIComponent(eventId)}`)
@@ -173,7 +171,7 @@ export default function EventDashboard({ eventId }: Props) {
 
   const seed   = hashStr(eventId);
   const lowest = data?.lowestPrice ?? 120;
-  const avg    = data?.averagePrice ?? Math.round(lowest * 1.15);
+  const avg    = Math.round(data?.averagePrice ?? lowest * 1.15);
   const demand = 55 + Math.round(seeded(seed, 99) * 40);
   const pctChg = +(seeded(seed, 88) * 14 - 7).toFixed(1);
 

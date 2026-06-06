@@ -5,16 +5,25 @@ import { ArrowLeft, MapPin, Calendar } from "lucide-react";
 import LocalEventDate from "@/components/ui/LocalEventDate";
 import EventDashboard from "@/components/events/EventDashboard";
 
-export default function EventPageClient() {
+interface Props {
+  tmEventName: string | null;
+  tmUrlFromApi: string | null;
+}
+
+export default function EventPageClient({ tmEventName, tmUrlFromApi }: Props) {
   const { id } = useParams<{ id: string }>();
   const sp = useSearchParams();
 
-  const title    = sp.get("title")    ?? "Event";
-  const isoDate  = sp.get("date")     ?? "";
-  const location = sp.get("location") ?? "";
-  const imageUrl = sp.get("image")    ?? "";
-  const sport    = sp.get("sport")    ?? "";
-  const tmUrl    = sp.get("tmUrl")    ?? "";
+  const urlTitle   = sp.get("title") ?? "";
+  const isoDate    = sp.get("date") ?? "";
+  const location   = sp.get("location") ?? "";
+  const imageUrl   = sp.get("image") ?? "";
+  const sport      = sp.get("sport") ?? "";
+  const urlTmUrl   = sp.get("tmUrl") ?? "";
+
+  // prefer URL param title, fall back to server-fetched TM name
+  const title  = urlTitle || tmEventName || "Event";
+  const tmUrl  = urlTmUrl || tmUrlFromApi || "";
 
   const sportEmojis: Record<string, string> = {
     NFL: "🏈", NBA: "🏀", MLB: "⚾", NHL: "🏒", MLS: "⚽",
@@ -25,7 +34,7 @@ export default function EventPageClient() {
   return (
     <div style={{ background: "#0e0d18", minHeight: "100vh", paddingTop: "80px" }}>
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <div style={{ position: "relative", overflow: "hidden" }}>
         {imageUrl && (
           <div style={{ position: "absolute", inset: 0, height: "360px" }}>
@@ -40,8 +49,7 @@ export default function EventPageClient() {
         )}
 
         <div style={{ position: "relative", maxWidth: "1100px", margin: "0 auto", padding: "40px clamp(20px,4vw,48px) 48px" }}>
-
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", color: "#8b89a8", textDecoration: "none", marginBottom: "32px", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", transition: "color 0.15s" }}>
+          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", color: "#8b89a8", textDecoration: "none", marginBottom: "32px", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif" }}>
             <ArrowLeft size={14} /> Back to events
           </Link>
 
@@ -51,7 +59,7 @@ export default function EventPageClient() {
                 {emoji} {sport}
               </span>
             )}
-            <h1 className="font-syne" style={{ fontWeight: 900, fontSize: "clamp(28px,5vw,48px)", color: "#ffffff", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+            <h1 className="font-syne" style={{ fontWeight: 900, fontSize: "clamp(24px,4vw,44px)", color: "#ffffff", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
               {title}
             </h1>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", fontSize: "0.88rem", color: "#8b89a8" }}>
@@ -77,7 +85,7 @@ export default function EventPageClient() {
         </div>
       </div>
 
-      {/* ── Dashboard ── */}
+      {/* Dashboard */}
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 clamp(20px,4vw,48px) 80px" }}>
         <EventDashboard eventId={id} />
       </div>
