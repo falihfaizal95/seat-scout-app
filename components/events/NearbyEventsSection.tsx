@@ -81,7 +81,7 @@ export default function NearbyEventsSection({ initialEvents }: Props) {
   return (
     <div>
       {showPrompt && (
-        <div className="mb-8 flex justify-center">
+        <div className="mb-16 flex justify-center">
           <button
             onClick={requestLocation}
             className="font-syne inline-flex items-center gap-3 rounded-[14px] bg-[var(--brand)] px-8 py-4 text-[15px] font-[700] text-white transition-all hover:bg-[var(--brand-light)] hover:shadow-[0_8px_24px_rgba(124,106,247,0.35)]"

@@ -12,6 +12,8 @@ export default function HomepageEventCard({ event }: Props) {
   const highestPrice = Math.max(...event.prices.map((p) => p.price));
   const savings      = highestPrice - lowestPrice;
 
+  const eventUrl = `/event/${event.id}?title=${encodeURIComponent(event.title)}&date=${encodeURIComponent(event.isoDate)}&location=${encodeURIComponent(event.location)}&image=${encodeURIComponent(event.imageUrl)}&sport=${encodeURIComponent(event.sport)}${event.tmUrl ? `&tmUrl=${encodeURIComponent(event.tmUrl)}` : ""}`;
+
   return (
     <div className="group flex flex-col overflow-hidden rounded-[20px] border border-[var(--card-border)] bg-[var(--card)] transition-all duration-200 hover:-translate-y-1 hover:border-[rgba(124,106,247,0.25)]">
 
@@ -85,27 +87,14 @@ export default function HomepageEventCard({ event }: Props) {
       </div>
 
       <div className="px-5 pb-5 pt-4">
-        {event.tmUrl ? (
-          <a
-            href={event.tmUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-syne flex w-full items-center justify-center gap-2 rounded-[12px] py-[14px] text-[15px] font-[700] text-white transition-all hover:opacity-90 hover:shadow-[0_6px_20px_rgba(34,197,94,0.35)]"
-            style={{ background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)" }}
-          >
-            View Best Deal
-            <ExternalLink size={15} />
-          </a>
-        ) : (
-          <Link
-            href={`/event/${event.id}`}
-            className="font-syne flex w-full items-center justify-center gap-2 rounded-[12px] py-[14px] text-[15px] font-[700] text-white transition-all hover:opacity-90 hover:shadow-[0_6px_20px_rgba(34,197,94,0.35)]"
-            style={{ background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)" }}
-          >
-            View Best Deal
-            <ExternalLink size={15} />
-          </Link>
-        )}
+        <Link
+          href={eventUrl}
+          className="font-syne flex w-full items-center justify-center gap-2 rounded-[12px] py-[14px] text-[15px] font-[700] text-white transition-all hover:opacity-90 hover:shadow-[0_6px_20px_rgba(34,197,94,0.35)]"
+          style={{ background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)" }}
+        >
+          View Deals
+          <ExternalLink size={15} />
+        </Link>
       </div>
 
     </div>
