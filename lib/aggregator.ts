@@ -97,11 +97,11 @@ async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
 
 /** Search SeatGeek by event name, return listings from stats */
 async function sgListingsByName(eventName: string): Promise<TicketListing[]> {
-  if (!SG_CLIENT || !eventName) return [];
+  if (!eventName) return [];
   const keyword = extractKeyword(eventName);
   try {
     const url = new URL(`${SG_BASE}/events`);
-    url.searchParams.set("client_id", SG_CLIENT);
+    if (SG_CLIENT) url.searchParams.set("client_id", SG_CLIENT);
     url.searchParams.set("q", keyword);
     url.searchParams.set("type", "sports");
     url.searchParams.set("per_page", "5");
