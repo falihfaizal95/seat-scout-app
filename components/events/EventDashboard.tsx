@@ -153,9 +153,10 @@ function TicketRow({ listing, isBest }: { listing: TicketListing; isBest: boolea
 
 interface Props {
   eventId: string;
+  eventName?: string;
 }
 
-export default function EventDashboard({ eventId }: Props) {
+export default function EventDashboard({ eventId, eventName }: Props) {
   const [data, setData]             = useState<AggregatedTickets | null>(null);
   const [loading, setLoading]       = useState(true);
   const [trendDays, setTrendDays]   = useState<7 | 14 | 30>(7);
@@ -163,11 +164,12 @@ export default function EventDashboard({ eventId }: Props) {
   const [sortDir, setSortDir]       = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
-    fetch(`/api/tickets/${encodeURIComponent(eventId)}`)
+    const url = `/api/tickets/${encodeURIComponent(eventId)}${eventName ? `?name=${encodeURIComponent(eventName)}` : ""}`;
+    fetch(url)
       .then((r) => r.json())
       .then((j) => { setData(j.data ?? null); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [eventId]);
+  }, [eventId, eventName]);
 
   const seed   = hashStr(eventId);
   const lowest = data?.lowestPrice ?? 120;

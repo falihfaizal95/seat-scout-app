@@ -3,10 +3,11 @@ import { aggregateTickets } from "@/lib/aggregator";
 import { getOrSet, ticketCacheKey } from "@/lib/cache";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params;
+  const eventName = new URL(req.url).searchParams.get("name") ?? undefined;
 
   if (!eventId) {
     return NextResponse.json({ error: "Event ID required" }, { status: 400 });
@@ -14,7 +15,7 @@ export async function GET(
 
   try {
     const cacheKey = ticketCacheKey(eventId);
-    const tickets = await getOrSet(cacheKey, () => aggregateTickets(eventId));
+    const tickets = await getOrSet(cacheKey, () => aggregateTickets(eventId, eventName));
     return NextResponse.json({ data: tickets });
   } catch (err) {
     console.error("[API] tickets error:", err);

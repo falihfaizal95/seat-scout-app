@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
       const base = ev.priceRanges?.[0]?.min ?? FALLBACK_BASE[sport];
       const location = [venue?.name, venue?.city?.name, venue?.state?.stateCode].filter(Boolean).join(", ");
       return {
-        id: `tm_nearby_${ev.id}`,
+        id: `tm_${ev.id}`,
         title: ev.name,
         isoDate,
         location: location || "TBD",
