@@ -134,48 +134,97 @@ async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
   } catch { return []; }
 }
 
-/** Search SeatGeek by event name, return listings from stats */
+/** Search SeatGeek by event name, then fetch real listings using the event ID */
 async function sgListingsByName(eventName: string): Promise<TicketListing[]> {
   if (!eventName) return [];
-  const keyword = extractKeyword(eventName);
-  try {
-    const url = new URL(`${SG_BASE}/events`);
-    if (SG_CLIENT) url.searchParams.set("client_id", SG_CLIENT);
-    url.searchParams.set("q", keyword);
-    url.searchParams.set("per_page", "5");
-    const res = await fetch(url.toString(), { next: { revalidate: 300 } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const events: {
-      id: number;
-      url: string;
-      stats: { lowest_price?: number; average_price?: number; highest_price?: number };
-    }[] = data.events ?? [];
 
-    const listings: TicketListing[] = [];
-    for (const ev of events.slice(0, 2)) {
-      // Use lowest_price, fall back to average_price * 0.8
-      const price = ev.stats.lowest_price || (ev.stats.average_price ? Math.round(ev.stats.average_price * 0.8) : 0);
-      if (!price || price <= 0) continue;
-      listings.push({
-        id: `sg_name_${ev.id}_0`,
-        platform: "seatgeek" as const,
-        eventId: generateEventId("sg", String(ev.id)),
-        externalEventId: String(ev.id),
-        section: "Various",
-        row: null,
-        quantity: 2,
-        pricePerTicket: price,
-        totalPrice: price * 2,
-        currency: "USD",
-        buyUrl: ev.url,
-        listingFetchedAt: new Date(),
-        isVerified: true,
-        isMock: false,
-      });
+  // Try multiple keyword variations to maximize match chances
+  const keywords = [extractKeyword(eventName), eventName.split(" at ")[1]?.trim(), eventName.split(" at ")[0]?.replace(/^.*:\s*/, "").trim()].filter(Boolean) as string[];
+
+  let sgEventId: number | null = null;
+  let sgEventUrl = "";
+
+  for (const keyword of keywords) {
+    try {
+      const url = new URL(`${SG_BASE}/events`);
+      if (SG_CLIENT) url.searchParams.set("client_id", SG_CLIENT);
+      url.searchParams.set("q", keyword);
+      url.searchParams.set("per_page", "3");
+      const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const events: { id: number; url: string; stats: { lowest_price?: number; average_price?: number } }[] = data.events ?? [];
+      if (events.length > 0) {
+        sgEventId = events[0].id;
+        sgEventUrl = events[0].url;
+        break;
+      }
+    } catch { continue; }
+  }
+
+  if (!sgEventId) return [];
+
+  // Try real listings endpoint first
+  try {
+    const listUrl = new URL(`${SG_BASE}/listings`);
+    if (SG_CLIENT) listUrl.searchParams.set("client_id", SG_CLIENT);
+    listUrl.searchParams.set("event_id", String(sgEventId));
+    listUrl.searchParams.set("per_page", "30");
+    const listRes = await fetch(listUrl.toString(), { next: { revalidate: 300 } });
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const listings: { id: number; section: string; row?: string; quantity: number; price: { amount: number } }[] = listData.listings ?? [];
+      if (listings.length > 0) {
+        return listings.slice(0, 30).map((l, i) => ({
+          id: `sg_listing_${sgEventId}_${i}`,
+          platform: "seatgeek" as const,
+          eventId: generateEventId("sg", String(sgEventId)),
+          externalEventId: String(sgEventId),
+          section: l.section || "General",
+          row: l.row || null,
+          quantity: l.quantity || 2,
+          pricePerTicket: l.price?.amount || 0,
+          totalPrice: (l.price?.amount || 0) * (l.quantity || 2),
+          currency: "USD",
+          buyUrl: sgEventUrl,
+          listingFetchedAt: new Date(),
+          isVerified: true,
+          isMock: false,
+        })).filter((l) => l.pricePerTicket > 0);
+      }
     }
-    return listings;
-  } catch { return []; }
+  } catch { /* fall through to stats */ }
+
+  // Fall back to stats if listings endpoint fails
+  try {
+    const eventUrl = new URL(`${SG_BASE}/events/${sgEventId}`);
+    if (SG_CLIENT) eventUrl.searchParams.set("client_id", SG_CLIENT);
+    const eventRes = await fetch(eventUrl.toString(), { next: { revalidate: 300 } });
+    if (eventRes.ok) {
+      const ev: { stats: { lowest_price?: number; average_price?: number }; url: string } = await eventRes.json();
+      const price = ev.stats.lowest_price || (ev.stats.average_price ? Math.round(ev.stats.average_price * 0.8) : 0);
+      if (price > 0) {
+        return [{
+          id: `sg_stats_${sgEventId}_0`,
+          platform: "seatgeek" as const,
+          eventId: generateEventId("sg", String(sgEventId)),
+          externalEventId: String(sgEventId),
+          section: "Various",
+          row: null,
+          quantity: 2,
+          pricePerTicket: price,
+          totalPrice: price * 2,
+          currency: "USD",
+          buyUrl: ev.url || sgEventUrl,
+          listingFetchedAt: new Date(),
+          isVerified: true,
+          isMock: false,
+        }];
+      }
+    }
+  } catch { /* no data available */ }
+
+  return [];
 }
 
 export async function aggregateTickets(eventId: string, eventName?: string): Promise<AggregatedTickets> {

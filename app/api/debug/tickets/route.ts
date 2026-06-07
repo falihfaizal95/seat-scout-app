@@ -1,37 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const name = new URL(req.url).searchParams.get("name") || "San Antonio Spurs New York Knicks";
-  const TM_KEY = process.env.TICKETMASTER_API_KEY || "";
   const SG_CLIENT = process.env.SEATGEEK_CLIENT_ID || "";
+  const sgEventId = 18068093; // NBA Finals Game 3: Spurs at Knicks
 
-  async function sgSearch(q: string) {
-    const url = new URL("https://api.seatgeek.com/2/events");
+  async function sgFetch(path: string, params: Record<string, string>) {
+    const url = new URL(`https://api.seatgeek.com/2/${path}`);
     if (SG_CLIENT) url.searchParams.set("client_id", SG_CLIENT);
-    url.searchParams.set("q", q);
-    url.searchParams.set("per_page", "3");
-    try {
-      const res = await fetch(url.toString(), { cache: "no-store" });
-      const d = res.ok ? await res.json() : { error: res.status };
-      return {
-        q, status: res.status,
-        events: (d.events ?? []).map((e: { id: number; title: string; stats: unknown; url: string }) => ({
-          id: e.id, title: e.title, stats: e.stats, url: e.url,
-        })),
-        error: d.error,
-      };
-    } catch (err) { return { q, error: String(err) }; }
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    return { status: res.status, data: res.ok ? await res.json() : null };
   }
 
-  const [sgFull, sgKnicks, sgNBAFinals, sgBasketball] = await Promise.all([
-    sgSearch(name),
-    sgSearch("Knicks"),
-    sgSearch("NBA Finals"),
-    sgSearch("basketball"),
+  const [listingsResult, eventResult] = await Promise.all([
+    sgFetch("listings", { event_id: String(sgEventId), per_page: "5" }),
+    sgFetch(`events/${sgEventId}`, {}),
   ]);
 
   return NextResponse.json({
-    env: { hasTMKey: !!TM_KEY, hasSGClient: !!SG_CLIENT, sgClientPreview: SG_CLIENT.slice(0, 6) + "..." },
-    seatgeekTests: { sgFull, sgKnicks, sgNBAFinals, sgBasketball },
+    sgEventId,
+    listings: {
+      status: listingsResult.status,
+      count: listingsResult.data?.listings?.length ?? 0,
+      sample: listingsResult.data?.listings?.slice(0, 3) ?? [],
+    },
+    eventStats: {
+      status: eventResult.status,
+      stats: eventResult.data?.stats ?? null,
+    },
   });
 }
