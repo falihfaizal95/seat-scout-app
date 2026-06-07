@@ -1,4 +1,4 @@
-import { ALL_ADAPTERS, SEARCH_ADAPTERS } from "./adapters";
+import { ALL_ADAPTERS, MOCK_ADAPTERS, SEARCH_ADAPTERS } from "./adapters";
 import type { NormalizedEvent, EventSearchParams } from "@/types/event";
 import type { TicketListing, AggregatedTickets } from "@/types/ticket";
 import { parseEventId, generateEventId } from "./utils";
@@ -234,12 +234,13 @@ export async function aggregateTickets(eventId: string, eventName?: string): Pro
   let allListings: TicketListing[] = [];
 
   if (source === "espn" || !platform) {
-    // ESPN events: search both TM and SeatGeek by event name
-    const [tmListings, sgListings] = await Promise.all([
+    // ESPN events: search TM+SG by name for real prices, fill rest with estimates
+    const [tmListings, sgListings, ...mockResults] = await Promise.all([
       tmListingsByName(eventName ?? ""),
       sgListingsByName(eventName ?? ""),
+      ...MOCK_ADAPTERS.map((a) => a.getTickets(externalId, eventName)),
     ]);
-    allListings = [...tmListings, ...sgListings];
+    allListings = [...tmListings, ...sgListings, ...mockResults.flat()];
   } else {
     // Direct platform lookup
     const adapters = ALL_ADAPTERS.filter((a) => a.platform === platform);

@@ -123,8 +123,11 @@ function TicketRow({ listing, isBest }: { listing: TicketListing; isBest: boolea
       <div style={{ flex: "1 1 160px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
           <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff" }}>{listing.section}</span>
-          {isBest && (
+          {isBest && !listing.isMock && (
             <span style={{ background: "#22c55e", color: "#fff", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", padding: "2px 8px", borderRadius: "20px" }}>BEST DEAL</span>
+          )}
+          {listing.isMock && (
+            <span style={{ background: "rgba(139,137,168,0.15)", color: "#8b89a8", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.04em", padding: "2px 8px", borderRadius: "20px", border: "1px solid rgba(139,137,168,0.25)" }}>EST.</span>
           )}
         </div>
         <div style={{ fontSize: "0.82rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif" }}>
@@ -136,8 +139,8 @@ function TicketRow({ listing, isBest }: { listing: TicketListing; isBest: boolea
         <span style={{ fontSize: "0.8rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", whiteSpace: "nowrap" }}>${base} + ${fees.toFixed(2)} fees</span>
       </div>
       <div style={{ flex: "0 0 auto", textAlign: "right" }}>
-        <div style={{ fontSize: "0.7rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", marginBottom: "2px" }}>Total</div>
-        <div className="font-syne" style={{ fontWeight: 800, fontSize: "1.25rem", color: isBest ? "#22c55e" : "#ffffff" }}>${Math.round(listing.pricePerTicket)}</div>
+        <div style={{ fontSize: "0.7rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", marginBottom: "2px" }}>{listing.isMock ? "Est. price" : "Total"}</div>
+        <div className="font-syne" style={{ fontWeight: 800, fontSize: "1.25rem", color: isBest && !listing.isMock ? "#22c55e" : listing.isMock ? "#8b89a8" : "#ffffff" }}>~${Math.round(listing.pricePerTicket)}</div>
       </div>
       <a
         href={listing.buyUrl} target="_blank" rel="noopener noreferrer"
