@@ -36,9 +36,10 @@ export interface HomepageEvent {
 }
 
 const LEAGUES = [
-  { key: "nba", espn: "basketball/nba", sport: "NBA" as const },
-  { key: "nhl", espn: "hockey/nhl",     sport: "NHL" as const },
-  { key: "mlb", espn: "baseball/mlb",   sport: "MLB" as const },
+  { key: "nba", espn: "basketball/nba",   sport: "NBA" as const },
+  { key: "nhl", espn: "hockey/nhl",       sport: "NHL" as const },
+  { key: "mlb", espn: "baseball/mlb",     sport: "MLB" as const },
+  { key: "wc",  espn: "soccer/fifa.world", sport: "MLS" as const },
 ];
 
 async function fetchESPNSchedule(espnPath: string, dateStr: string): Promise<ESPNGame[]> {
@@ -105,7 +106,7 @@ async function enrichWithTicketmaster(game: ESPNGame): Promise<TMResult> {
   }
 }
 
-const FALLBACK_BASE: Record<string, number> = { NBA: 145, NHL: 120, MLB: 85 };
+const FALLBACK_BASE: Record<string, number> = { NBA: 145, NHL: 120, MLB: 85, MLS: 350 };
 
 export function buildPrices(base: number, gameId: string) {
   let h = 2166136261;
@@ -128,6 +129,7 @@ const SPORT_FALLBACK: Record<string, string> = {
   NBA: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=800&q=80",
   NHL: "https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?w=800&q=80",
   MLB: "https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=800&q=80",
+  MLS: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80",
 };
 
 export async function getUpcomingPopularEvents(count = 3): Promise<HomepageEvent[]> {

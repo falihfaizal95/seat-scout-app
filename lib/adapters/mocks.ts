@@ -7,6 +7,17 @@ const ROWS = ["A","B","C","D","E","F","G","H","J","K","L","M","N","P","Q","R"];
 
 type UrlBuilder = (eventName: string, externalEventId: string) => string;
 
+function basePriceForEvent(eventName?: string): { min: number; range: number } {
+  const name = (eventName ?? "").toLowerCase();
+  if (name.includes("world cup") || name.includes("fifa"))  return { min: 280, range: 600 };
+  if (name.includes("finals") || name.includes("playoff") || name.includes("championship")) return { min: 180, range: 400 };
+  if (name.includes("nba") || name.includes("knicks") || name.includes("lakers") || name.includes("celtics")) return { min: 100, range: 250 };
+  if (name.includes("nfl") || name.includes("super bowl")) return { min: 150, range: 350 };
+  if (name.includes("nhl") || name.includes("hockey"))     return { min: 80, range: 180 };
+  if (name.includes("mlb") || name.includes("baseball"))   return { min: 40, range: 120 };
+  return { min: 60, range: 160 };
+}
+
 function createMockAdapter(platform: Platform, siteUrl: string, priceMultiplier: number, urlBuilder?: UrlBuilder): TicketAdapter {
   return {
     platform,
@@ -15,10 +26,11 @@ function createMockAdapter(platform: Platform, siteUrl: string, priceMultiplier:
       const rand = seededRandom(`${platform}_${externalEventId}`);
       const listingCount = Math.floor(rand() * 8) + 4;
       const listings: TicketListing[] = [];
+      const { min, range } = basePriceForEvent(eventName);
       const q = encodeURIComponent(eventName ?? "");
       const buyUrl = urlBuilder && eventName ? urlBuilder(eventName, externalEventId) : q ? `${siteUrl}/search?q=${q}` : siteUrl;
       for (let i = 0; i < listingCount; i++) {
-        const price = Math.round((40 + rand() * 200) * priceMultiplier);
+        const price = Math.round((min + rand() * range) * priceMultiplier);
         listings.push({
           id: `${platform}_${externalEventId}_${i}`,
           platform,
