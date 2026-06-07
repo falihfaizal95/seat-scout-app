@@ -22,10 +22,19 @@ export async function searchEvents(params: EventSearchParams): Promise<Normalize
   return allEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 }
 
+const SOURCE_TO_PLATFORM: Record<string, string> = {
+  tm: "ticketmaster",
+  sg: "seatgeek",
+};
+
 export async function aggregateTickets(eventId: string): Promise<AggregatedTickets> {
-  const { externalId } = parseEventId(eventId);
+  const { source, externalId } = parseEventId(eventId);
+  const platform = SOURCE_TO_PLATFORM[source];
+  const adapters = platform
+    ? ALL_ADAPTERS.filter((a) => a.platform === platform)
+    : ALL_ADAPTERS;
   const results = await Promise.allSettled(
-    ALL_ADAPTERS.map((adapter) => adapter.getTickets(externalId))
+    adapters.map((adapter) => adapter.getTickets(externalId))
   );
   const allListings: TicketListing[] = [];
   for (const result of results) {
