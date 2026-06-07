@@ -32,75 +32,111 @@ const SOURCE_TO_PLATFORM: Record<string, string> = {
   sg: "seatgeek",
 };
 
-/** Search TM by event name, return ticket listings from first matching event */
+/**
+ * Extract a short search keyword from an event title.
+ * "NBA Finals: San Antonio Spurs at New York Knicks Game 3" → "San Antonio Spurs New York Knicks"
+ */
+function extractKeyword(title: string): string {
+  // Remove common prefixes like "NBA Finals:", "NHL Playoffs:", etc.
+  let kw = title.replace(/^(nba|nhl|mlb|nfl|mls)\s+(finals?|playoffs?|championship)\s*[:–-]\s*/i, "");
+  // Remove "Game N" suffix
+  kw = kw.replace(/\s*Game\s+\d+\s*$/i, "").trim();
+  // Replace " at " with " "
+  kw = kw.replace(/\s+at\s+/i, " ");
+  // Replace " vs.? " with " "
+  kw = kw.replace(/\s+vs\.?\s+/i, " ");
+  return kw.trim() || title;
+}
+
+/** Search TM by event name keyword, return listings from price ranges */
 async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
   if (!TM_KEY || !eventName) return [];
+  const keyword = extractKeyword(eventName);
   try {
     const url = new URL(`${TM_BASE}/events.json`);
     url.searchParams.set("apikey", TM_KEY);
-    url.searchParams.set("keyword", eventName);
+    url.searchParams.set("keyword", keyword);
     url.searchParams.set("classificationName", "sports");
-    url.searchParams.set("size", "3");
+    url.searchParams.set("size", "5");
     const res = await fetch(url.toString(), { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
-    const events: { id: string; priceRanges?: { type: string; min: number; currency: string }[]; url: string }[] =
-      data._embedded?.events ?? [];
-    if (!events.length) return [];
-    const ev = events[0];
-    if (!ev.priceRanges?.length) return [];
-    return ev.priceRanges.map((range, i) => ({
-      id: `tm_name_${ev.id}_${i}`,
-      platform: "ticketmaster" as const,
-      eventId: generateEventId("tm", ev.id),
-      externalEventId: ev.id,
-      section: range.type === "resale" ? "Resale – Various" : "Official – Various",
-      row: null,
-      quantity: 2,
-      pricePerTicket: range.min,
-      totalPrice: range.min * 2,
-      currency: range.currency || "USD",
-      buyUrl: ev.url,
-      listingFetchedAt: new Date(),
-      isVerified: true,
-      isMock: false,
-    }));
+    const events: {
+      id: string;
+      priceRanges?: { type: string; min: number; max?: number; currency: string }[];
+      url: string;
+    }[] = data._embedded?.events ?? [];
+
+    const listings: TicketListing[] = [];
+    for (const ev of events.slice(0, 2)) {
+      if (!ev.priceRanges?.length) continue;
+      for (let i = 0; i < ev.priceRanges.length; i++) {
+        const range = ev.priceRanges[i];
+        if (!range.min || range.min <= 0) continue;
+        listings.push({
+          id: `tm_name_${ev.id}_${i}`,
+          platform: "ticketmaster" as const,
+          eventId: generateEventId("tm", ev.id),
+          externalEventId: ev.id,
+          section: range.type === "resale" ? "Resale – Various" : "Official – Various",
+          row: null,
+          quantity: 2,
+          pricePerTicket: range.min,
+          totalPrice: range.min * 2,
+          currency: range.currency || "USD",
+          buyUrl: ev.url,
+          listingFetchedAt: new Date(),
+          isVerified: true,
+          isMock: false,
+        });
+      }
+    }
+    return listings;
   } catch { return []; }
 }
 
-/** Search SeatGeek by event name, return a synthetic listing from stats.lowest_price */
+/** Search SeatGeek by event name, return listings from stats */
 async function sgListingsByName(eventName: string): Promise<TicketListing[]> {
   if (!SG_CLIENT || !eventName) return [];
+  const keyword = extractKeyword(eventName);
   try {
     const url = new URL(`${SG_BASE}/events`);
     url.searchParams.set("client_id", SG_CLIENT);
-    url.searchParams.set("q", eventName);
+    url.searchParams.set("q", keyword);
     url.searchParams.set("type", "sports");
-    url.searchParams.set("per_page", "3");
+    url.searchParams.set("per_page", "5");
     const res = await fetch(url.toString(), { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
-    const events: { id: number; url: string; stats: { lowest_price?: number } }[] = data.events ?? [];
-    if (!events.length) return [];
-    const ev = events[0];
-    const price = ev.stats.lowest_price;
-    if (!price) return [];
-    return [{
-      id: `sg_name_${ev.id}_0`,
-      platform: "seatgeek" as const,
-      eventId: generateEventId("sg", String(ev.id)),
-      externalEventId: String(ev.id),
-      section: "Various",
-      row: null,
-      quantity: 2,
-      pricePerTicket: price,
-      totalPrice: price * 2,
-      currency: "USD",
-      buyUrl: ev.url,
-      listingFetchedAt: new Date(),
-      isVerified: true,
-      isMock: false,
-    }];
+    const events: {
+      id: number;
+      url: string;
+      stats: { lowest_price?: number; average_price?: number; highest_price?: number };
+    }[] = data.events ?? [];
+
+    const listings: TicketListing[] = [];
+    for (const ev of events.slice(0, 2)) {
+      // Use lowest_price, fall back to average_price * 0.8
+      const price = ev.stats.lowest_price || (ev.stats.average_price ? Math.round(ev.stats.average_price * 0.8) : 0);
+      if (!price || price <= 0) continue;
+      listings.push({
+        id: `sg_name_${ev.id}_0`,
+        platform: "seatgeek" as const,
+        eventId: generateEventId("sg", String(ev.id)),
+        externalEventId: String(ev.id),
+        section: "Various",
+        row: null,
+        quantity: 2,
+        pricePerTicket: price,
+        totalPrice: price * 2,
+        currency: "USD",
+        buyUrl: ev.url,
+        listingFetchedAt: new Date(),
+        isVerified: true,
+        isMock: false,
+      });
+    }
+    return listings;
   } catch { return []; }
 }
 
@@ -111,7 +147,7 @@ export async function aggregateTickets(eventId: string, eventName?: string): Pro
   let allListings: TicketListing[] = [];
 
   if (source === "espn" || !platform) {
-    // No direct platform mapping — search both TM and SeatGeek by name
+    // ESPN events: search both TM and SeatGeek by event name
     const [tmListings, sgListings] = await Promise.all([
       tmListingsByName(eventName ?? ""),
       sgListingsByName(eventName ?? ""),
@@ -128,7 +164,7 @@ export async function aggregateTickets(eventId: string, eventName?: string): Pro
       else console.warn("[Aggregator] Adapter failed:", result.reason);
     }
 
-    // If direct lookup returned nothing, fall back to name search
+    // Fallback to name-based search if direct lookup returned nothing
     if (allListings.length === 0 && eventName) {
       const [tmListings, sgListings] = await Promise.all([
         tmListingsByName(eventName),

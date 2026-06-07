@@ -154,9 +154,10 @@ function TicketRow({ listing, isBest }: { listing: TicketListing; isBest: boolea
 interface Props {
   eventId: string;
   eventName?: string;
+  tmUrl?: string;
 }
 
-export default function EventDashboard({ eventId, eventName }: Props) {
+export default function EventDashboard({ eventId, eventName, tmUrl }: Props) {
   const [data, setData]             = useState<AggregatedTickets | null>(null);
   const [loading, setLoading]       = useState(true);
   const [trendDays, setTrendDays]   = useState<7 | 14 | 30>(7);
@@ -345,10 +346,32 @@ export default function EventDashboard({ eventId, eventName }: Props) {
           </div>
         </div>
       ) : (
-        <div style={{ ...card, padding: "60px", textAlign: "center" }}>
+        <div style={{ ...card, padding: "48px 40px", textAlign: "center" }}>
           <div style={{ fontSize: "3rem", marginBottom: "14px" }}>🎟️</div>
-          <div className="font-syne" style={{ fontWeight: 800, fontSize: "1.2rem", color: "#ffffff", marginBottom: "8px" }}>No Listings Available</div>
-          <div style={{ fontSize: "0.9rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif" }}>Check back closer to the event date.</div>
+          <div className="font-syne" style={{ fontWeight: 800, fontSize: "1.2rem", color: "#ffffff", marginBottom: "8px" }}>No Listings Found</div>
+          <div style={{ fontSize: "0.9rem", color: "#8b89a8", fontFamily: "var(--font-dm-sans),'DM Sans',sans-serif", marginBottom: "28px" }}>
+            We couldn&apos;t pull live prices right now. Check these platforms directly:
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", justifyContent: "center" }}>
+            {tmUrl && (
+              <a href={tmUrl} target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 22px", background: "rgba(2,108,223,0.12)", border: "1.5px solid rgba(2,108,223,0.35)", borderRadius: "10px", color: "#026CDF", fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", fontFamily: "var(--font-syne),'Syne',sans-serif" }}>
+                Ticketmaster <ExternalLink size={14} />
+              </a>
+            )}
+            {eventName && (
+              <>
+                <a href={`https://seatgeek.com/search?search[q]=${encodeURIComponent(eventName)}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 22px", background: "rgba(5,192,83,0.1)", border: "1.5px solid rgba(5,192,83,0.3)", borderRadius: "10px", color: "#05C053", fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", fontFamily: "var(--font-syne),'Syne',sans-serif" }}>
+                  SeatGeek <ExternalLink size={14} />
+                </a>
+                <a href={`https://www.stubhub.com/find/s/?q=${encodeURIComponent(eventName)}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 22px", background: "rgba(255,92,0,0.1)", border: "1.5px solid rgba(255,92,0,0.3)", borderRadius: "10px", color: "#FF5C00", fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", fontFamily: "var(--font-syne),'Syne',sans-serif" }}>
+                  StubHub <ExternalLink size={14} />
+                </a>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

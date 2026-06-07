@@ -34,7 +34,7 @@ export async function getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl = 
 }
 
 export function ticketCacheKey(eventId: string): string {
-  return `tickets:v1:${eventId}`;
+  return `tickets:v3:${eventId}`;
 }
 
 export function searchCacheKey(query: string, sport?: string): string {

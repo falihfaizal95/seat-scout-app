@@ -87,7 +87,7 @@ export default function EventPageClient({ tmEventName, tmUrlFromApi }: Props) {
 
       {/* Dashboard */}
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 clamp(20px,4vw,48px) 80px" }}>
-        <EventDashboard eventId={id} eventName={title} />
+        <EventDashboard eventId={id} eventName={title} tmUrl={tmUrl} />
       </div>
 
     </div>
