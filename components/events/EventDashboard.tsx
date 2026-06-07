@@ -314,7 +314,7 @@ export default function EventDashboard({ eventId }: Props) {
                     style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderRadius: "12px", border: `1.5px solid ${active ? pColor + "66" : "rgba(255,255,255,0.07)"}`, background: active ? pColor + "15" : "#13121f", cursor: "pointer", transition: "all 0.15s" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span className="font-syne" style={{ fontWeight: 700, fontSize: "0.9rem", color: active ? pColor : "#ffffff" }}>{pName}</span>
-                      {p === "ticketmaster" && (
+                      {(p === "ticketmaster" || p === "seatgeek") && (
                         <span style={{ fontSize: "0.62rem", fontWeight: 700, background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", padding: "1px 6px", borderRadius: "4px", textTransform: "lowercase" }}>live</span>
                       )}
                     </div>
