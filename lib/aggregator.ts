@@ -48,7 +48,40 @@ function extractKeyword(title: string): string {
   return kw.trim() || title;
 }
 
-/** Search TM by event name keyword, return listings from price ranges */
+/** Fetch ticket offers from TM Commerce API for a specific event ID */
+async function tmOffersForEvent(eventId: string, buyUrl: string): Promise<TicketListing[]> {
+  try {
+    const url = `https://app.ticketmaster.com/commerce/v2/events/${eventId}/offers.json?apikey=${TM_KEY}`;
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const offers: { id: string; name?: string; prices?: { value: number; currency: string }[] }[] =
+      data._embedded?.offers ?? data.offers ?? [];
+    if (!offers.length) return [];
+    return offers.slice(0, 6).flatMap((offer, i) => {
+      const price = offer.prices?.[0]?.value ?? 0;
+      if (!price || price <= 0) return [];
+      return [{
+        id: `tm_offer_${eventId}_${i}`,
+        platform: "ticketmaster" as const,
+        eventId: generateEventId("tm", eventId),
+        externalEventId: eventId,
+        section: offer.name ?? "Various",
+        row: null,
+        quantity: 2,
+        pricePerTicket: price,
+        totalPrice: price * 2,
+        currency: offer.prices?.[0]?.currency ?? "USD",
+        buyUrl,
+        listingFetchedAt: new Date(),
+        isVerified: true,
+        isMock: false,
+      }];
+    });
+  } catch { return []; }
+}
+
+/** Search TM by event name keyword, return listings from Commerce API offers */
 async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
   if (!TM_KEY || !eventName) return [];
   const keyword = extractKeyword(eventName);
@@ -57,7 +90,7 @@ async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
     url.searchParams.set("apikey", TM_KEY);
     url.searchParams.set("keyword", keyword);
     url.searchParams.set("classificationName", "sports");
-    url.searchParams.set("size", "5");
+    url.searchParams.set("size", "3");
     const res = await fetch(url.toString(), { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
@@ -69,26 +102,32 @@ async function tmListingsByName(eventName: string): Promise<TicketListing[]> {
 
     const listings: TicketListing[] = [];
     for (const ev of events.slice(0, 2)) {
-      if (!ev.priceRanges?.length) continue;
-      for (let i = 0; i < ev.priceRanges.length; i++) {
-        const range = ev.priceRanges[i];
-        if (!range.min || range.min <= 0) continue;
-        listings.push({
-          id: `tm_name_${ev.id}_${i}`,
-          platform: "ticketmaster" as const,
-          eventId: generateEventId("tm", ev.id),
-          externalEventId: ev.id,
-          section: range.type === "resale" ? "Resale – Various" : "Official – Various",
-          row: null,
-          quantity: 2,
-          pricePerTicket: range.min,
-          totalPrice: range.min * 2,
-          currency: range.currency || "USD",
-          buyUrl: ev.url,
-          listingFetchedAt: new Date(),
-          isVerified: true,
-          isMock: false,
-        });
+      // Try priceRanges first (rarely populated but instant)
+      if (ev.priceRanges?.length) {
+        for (let i = 0; i < ev.priceRanges.length; i++) {
+          const range = ev.priceRanges[i];
+          if (!range.min || range.min <= 0) continue;
+          listings.push({
+            id: `tm_range_${ev.id}_${i}`,
+            platform: "ticketmaster" as const,
+            eventId: generateEventId("tm", ev.id),
+            externalEventId: ev.id,
+            section: range.type === "resale" ? "Resale – Various" : "Official – Various",
+            row: null,
+            quantity: 2,
+            pricePerTicket: range.min,
+            totalPrice: range.min * 2,
+            currency: range.currency || "USD",
+            buyUrl: ev.url,
+            listingFetchedAt: new Date(),
+            isVerified: true,
+            isMock: false,
+          });
+        }
+      } else {
+        // Fall back to Commerce API
+        const offers = await tmOffersForEvent(ev.id, ev.url);
+        listings.push(...offers);
       }
     }
     return listings;
@@ -103,7 +142,6 @@ async function sgListingsByName(eventName: string): Promise<TicketListing[]> {
     const url = new URL(`${SG_BASE}/events`);
     if (SG_CLIENT) url.searchParams.set("client_id", SG_CLIENT);
     url.searchParams.set("q", keyword);
-    url.searchParams.set("type", "sports");
     url.searchParams.set("per_page", "5");
     const res = await fetch(url.toString(), { next: { revalidate: 300 } });
     if (!res.ok) return [];

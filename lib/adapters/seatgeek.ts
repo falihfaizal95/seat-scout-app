@@ -31,7 +31,6 @@ export const seatgeekAdapter: TicketAdapter = {
     const url = new URL(`${BASE_URL}/events`);
     url.searchParams.set("client_id", CLIENT_ID);
     url.searchParams.set("q", params.query);
-    url.searchParams.set("type", "sports");
     url.searchParams.set("per_page", String(params.limit || 20));
     if (params.dateFrom) url.searchParams.set("datetime_utc.gte", `${params.dateFrom}T00:00:00`);
     if (params.dateTo)   url.searchParams.set("datetime_utc.lte", `${params.dateTo}T23:59:59`);
