@@ -30,7 +30,7 @@ export interface HomepageEvent {
   isoDate: string;
   location: string;
   imageUrl: string;
-  sport: "NBA" | "NHL" | "MLB";
+  sport: "NBA" | "NHL" | "MLB" | "MLS";
   tmUrl?: string;
   prices: { platform: string; price: number }[];
 }
@@ -144,7 +144,7 @@ export async function getUpcomingPopularEvents(count = 3): Promise<HomepageEvent
     datesToFetch.push({ date: d, daysFromNow: i });
   }
 
-  type Tagged = { game: ESPNGame; sport: "NBA" | "NHL" | "MLB"; daysFromNow: number };
+  type Tagged = { game: ESPNGame; sport: HomepageEvent["sport"]; daysFromNow: number };
 
   const fetchPromises = LEAGUES.flatMap((league) =>
     datesToFetch.map(({ date, daysFromNow }) =>
