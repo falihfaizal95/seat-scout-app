@@ -21,12 +21,17 @@ function mapSGSport(event: SGEvent): string {
   if (/concert|music|festival/.test(type)) return "Concert";
   if (/theater|theatre|broadway|musical/.test(type)) return "Theatre";
   if (type.includes("comedy")) return "Comedy";
-  const t =event.taxonomies?.map((x) => x.name.toLowerCase()) || [];
-  if (t.some((x) => x.includes("nfl") || x.includes("football"))) return "NFL";
-  if (t.some((x) => x.includes("nba") || x.includes("basketball"))) return "NBA";
-  if (t.some((x) => x.includes("mlb") || x.includes("baseball"))) return "MLB";
-  if (t.some((x) => x.includes("nhl") || x.includes("hockey"))) return "NHL";
-  if (t.some((x) => x.includes("mls") || x.includes("soccer"))) return "MLS";
+  // Exact league first, so college or minor-league games aren't called NBA/NHL
+  const t = [type, ...(event.taxonomies?.map((x) => x.name.toLowerCase()) || [])];
+  for (const league of ["nfl", "nba", "mlb", "nhl", "mls"]) if (t.includes(league)) return league.toUpperCase();
+  if (t.some((x) => x.includes("ncaa") && x.includes("basketball"))) return "NCAAB";
+  if (t.some((x) => x.includes("ncaa") && x.includes("football"))) return "NCAAF";
+  if (t.some((x) => x.includes("basketball"))) return "Basketball";
+  if (t.some((x) => x.includes("hockey"))) return "Hockey";
+  if (t.some((x) => x.includes("football"))) return "Football";
+  if (t.some((x) => x.includes("baseball"))) return "Baseball";
+  if (t.some((x) => x.includes("soccer"))) return "Soccer";
+  if (t.includes("theater")) return "Theatre";
   return "Other";
 }
 

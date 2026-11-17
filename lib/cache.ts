@@ -38,5 +38,5 @@ export function ticketCacheKey(eventId: string): string {
 }
 
 export function searchCacheKey(query: string, sport?: string): string {
-  return `search:v1:${query}:${sport || "all"}`.toLowerCase().replace(/\s+/g, "-");
+  return `search:v5:${query}:${sport || "all"}`.toLowerCase().replace(/\s+/g, "-");
 }

@@ -8,7 +8,7 @@ interface TMEvent {
   id: string;
   name: string;
   dates: { start: { localDate: string; localTime?: string; dateTime?: string } };
-  images: Array<{ url: string; width: number; height: number }>;
+  images: Array<{ url: string; ratio?: string; width: number; height: number; fallback?: boolean }>;
   priceRanges?: Array<{ type: string; min: number; max: number; currency: string }>;
   url: string;
   _embedded?: {
@@ -19,18 +19,28 @@ interface TMEvent {
 }
 
 function mapSport(classification?: TMEvent["classifications"]): string {
+  const segment = classification?.[0]?.segment?.name || "";
+  if (segment === "Music") return "Concert";
+  if (segment === "Arts & Theatre") return "Theatre";
   const genre = classification?.[0]?.genre?.name || "";
   const sub = classification?.[0]?.subGenre?.name || "";
-  if (genre.toLowerCase().includes("football")) return "NFL";
-  if (genre.toLowerCase().includes("basketball")) return "NBA";
-  if (genre.toLowerCase().includes("baseball")) return "MLB";
-  if (genre.toLowerCase().includes("hockey")) return "NHL";
-  if (genre.toLowerCase().includes("soccer")) return "MLS";
-  return genre || sub || "Other";
+  // Ticketmaster's subGenre is the league ("NBA", "College", "G League"...)
+  if (["NFL", "NBA", "MLB", "NHL", "MLS"].includes(sub)) return sub;
+  const g = genre.toLowerCase();
+  if (sub === "College" && g.includes("basketball")) return "NCAAB";
+  if (sub === "College" && g.includes("football")) return "NCAAF";
+  if (g.includes("soccer")) return "Soccer";
+  return genre && genre !== "Miscellaneous" && genre !== "Undefined" ? genre : "Other";
 }
 
+/**
+ * The event's own artwork (tour poster / banner), widest landscape version.
+ * Ticketmaster marks generic category stock photos as `fallback`; never use those.
+ */
 function getBestImage(images: TMEvent["images"]): string | undefined {
-  return [...images].sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+  const own = images.filter((i) => !i.fallback);
+  const wide = own.filter((i) => i.ratio === "16_9" && i.width <= 2048);
+  return [...(wide.length ? wide : own)].sort((a, b) => b.width * b.height - a.width * a.height)[0]?.url;
 }
 
 export const ticketmasterAdapter: TicketAdapter = {
@@ -41,7 +51,8 @@ export const ticketmasterAdapter: TicketAdapter = {
     const url = new URL(`${BASE_URL}/events.json`);
     url.searchParams.set("apikey", API_KEY);
     url.searchParams.set("keyword", params.query);
-    url.searchParams.set("classificationName", "sports");
+    // Concerts, theatre and comedy too, not only sports
+    if (params.sport) url.searchParams.set("classificationName", params.sport);
     url.searchParams.set("size", String(params.limit || 20));
     if (params.dateFrom) url.searchParams.set("startDateTime", `${params.dateFrom}T00:00:00Z`);
     if (params.dateTo)   url.searchParams.set("endDateTime",   `${params.dateTo}T23:59:59Z`);
@@ -55,16 +66,20 @@ export const ticketmasterAdapter: TicketAdapter = {
         const venue = e._embedded?.venues?.[0];
         const attractions = e._embedded?.attractions || [];
         const priceRange = e.priceRanges?.[0];
+        const segment = e.classifications?.[0]?.segment?.name;
+        // Only games have two teams; a concert lists headliner + openers
+        const isGame = segment === "Sports" && attractions.length >= 2;
         const dateStr = e.dates.start.dateTime || `${e.dates.start.localDate}T${e.dates.start.localTime || "19:00:00"}`;
         return {
           id: generateEventId("tm", e.id),
           name: e.name,
           sport: mapSport(e.classifications),
+          segment,
           league: e.classifications?.[0]?.genre?.name,
-          homeTeam: attractions[0]?.name,
-          awayTeam: attractions[1]?.name,
-          homeTeamLogo: attractions[0]?.images?.[0]?.url,
-          awayTeamLogo: attractions[1]?.images?.[0]?.url,
+          homeTeam: isGame ? attractions[0]?.name : undefined,
+          awayTeam: isGame ? attractions[1]?.name : undefined,
+          homeTeamLogo: isGame ? attractions[0]?.images?.[0]?.url : undefined,
+          awayTeamLogo: isGame ? attractions[1]?.images?.[0]?.url : undefined,
           venue: venue?.name || "TBD",
           city: venue?.city?.name || "",
           state: venue?.state?.stateCode,

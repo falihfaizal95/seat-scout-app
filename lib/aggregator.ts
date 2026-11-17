@@ -9,38 +9,58 @@ const TM_KEY = process.env.TICKETMASTER_API_KEY || "";
 const SG_BASE = "https://api.seatgeek.com/2";
 const SG_CLIENT = process.env.SEATGEEK_CLIENT_ID || "";
 
+const squash = (s: string) => s.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+
+/** "JOHN SUMMIT - CTRL ESCAPE TOUR" and "John Summit with Cassian" -> "johnsummit" */
+const headliner = (name: string) => squash(name.split(/\s+(?:-|–|with|w\/|featuring|feat\.?|:)\s+|\s*\(/i)[0]);
+
+const isShouting = (s: string) => /[A-Z]{3}/.test(s) && s === s.toUpperCase();
+const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
+/** Same event on two sites: same city, start within 3 hours, and the same venue or headliner. */
+function sameShow(a: NormalizedEvent, b: NormalizedEvent): boolean {
+  const city = (s: string) => squash(s.replace(/\bft\.?\s/i, "fort ").replace(/\bst\.?\s/i, "saint "));
+  if (a.source === b.source || city(a.city) !== city(b.city)) return false;
+  const gap = Math.abs(new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+  if (!(gap <= 3 * 3_600_000)) return false;
+  const va = squash(a.venue), vb = squash(b.venue);
+  const venueMatch = !!va && !!vb && (va.includes(vb) || vb.includes(va));
+  if (a.homeTeam || b.homeTeam) return venueMatch;
+  return venueMatch && headliner(a.name) === headliner(b.name);
+}
+
 export async function searchEvents(params: EventSearchParams): Promise<NormalizedEvent[]> {
   const results = await Promise.allSettled(
     SEARCH_ADAPTERS.map((adapter) => adapter.searchEvents(params))
   );
   const allEvents: NormalizedEvent[] = [];
   const seenIds = new Set<string>();
-  // The same show listed on two sites: same venue, same start (to the hour)
-  const bySlot = new Map<string, NormalizedEvent>();
-  const slot = (e: NormalizedEvent) => {
-    const t = new Date(e.eventDate).getTime();
-    if (Number.isNaN(t)) return null;
-    const venue = e.venue.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return `${venue}|${Math.round(t / 3_600_000)}`;
-  };
   for (const result of results) {
     if (result.status !== "fulfilled") continue;
     for (const event of result.value) {
       if (seenIds.has(event.id)) continue;
       seenIds.add(event.id);
-      const key = slot(event);
-      const twin = key ? bySlot.get(key) : undefined;
+      const twin = allEvents.find((e) => sameShow(e, event));
       if (twin) {
         // Keep the first listing, remember the other site's ID too
         twin.externalIds = { ...event.externalIds, ...twin.externalIds };
         twin.lowestPrice ??= event.lowestPrice;
         twin.imageUrl ??= event.imageUrl;
+        if (isShouting(twin.name) && !isShouting(event.name)) twin.name = event.name;
         continue;
       }
-      if (key) bySlot.set(key, event);
       allEvents.push(event);
     }
   }
+
+  // A show only one site sells still gets its tour artwork if another date has it
+  const art = new Map<string, string>();
+  for (const e of allEvents) if (e.imageUrl && !e.homeTeam) art.set(headliner(e.name), e.imageUrl);
+  for (const e of allEvents) {
+    if (!e.imageUrl && !e.homeTeam) e.imageUrl = art.get(headliner(e.name));
+    if (isShouting(e.name)) e.name = titleCase(e.name);
+  }
+
   return allEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 }
 
