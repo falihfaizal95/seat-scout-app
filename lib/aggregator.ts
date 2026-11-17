@@ -15,14 +15,30 @@ export async function searchEvents(params: EventSearchParams): Promise<Normalize
   );
   const allEvents: NormalizedEvent[] = [];
   const seenIds = new Set<string>();
+  // The same show listed on two sites: same venue, same start (to the hour)
+  const bySlot = new Map<string, NormalizedEvent>();
+  const slot = (e: NormalizedEvent) => {
+    const t = new Date(e.eventDate).getTime();
+    if (Number.isNaN(t)) return null;
+    const venue = e.venue.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return `${venue}|${Math.round(t / 3_600_000)}`;
+  };
   for (const result of results) {
-    if (result.status === "fulfilled") {
-      for (const event of result.value) {
-        if (!seenIds.has(event.id)) {
-          seenIds.add(event.id);
-          allEvents.push(event);
-        }
+    if (result.status !== "fulfilled") continue;
+    for (const event of result.value) {
+      if (seenIds.has(event.id)) continue;
+      seenIds.add(event.id);
+      const key = slot(event);
+      const twin = key ? bySlot.get(key) : undefined;
+      if (twin) {
+        // Keep the first listing, remember the other site's ID too
+        twin.externalIds = { ...event.externalIds, ...twin.externalIds };
+        twin.lowestPrice ??= event.lowestPrice;
+        twin.imageUrl ??= event.imageUrl;
+        continue;
       }
+      if (key) bySlot.set(key, event);
+      allEvents.push(event);
     }
   }
   return allEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());

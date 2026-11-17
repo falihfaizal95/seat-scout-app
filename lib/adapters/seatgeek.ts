@@ -4,7 +4,7 @@ import { generateEventId } from "@/lib/utils";
 const BASE_URL = "https://api.seatgeek.com/2";
 const CLIENT_ID = process.env.SEATGEEK_CLIENT_ID || "";
 
-interface SGPerformer { name: string; image?: string }
+interface SGPerformer { name: string; image?: string; home_team?: boolean; away_team?: boolean; primary?: boolean }
 interface SGVenue { name: string; city: string; state: string; country: string }
 interface SGEvent {
   id: number; title: string; type: string; datetime_utc: string;
@@ -13,8 +13,15 @@ interface SGEvent {
   url: string; taxonomies?: Array<{ name: string }>;
 }
 
+/** SeatGeek's datetime_utc has no "Z", so browsers would read it as local time. */
+const utc = (s: string) => (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+
 function mapSGSport(event: SGEvent): string {
-  const t = event.taxonomies?.map((x) => x.name.toLowerCase()) || [];
+  const type = (event.type || "").toLowerCase();
+  if (/concert|music|festival/.test(type)) return "Concert";
+  if (/theater|theatre|broadway|musical/.test(type)) return "Theatre";
+  if (type.includes("comedy")) return "Comedy";
+  const t =event.taxonomies?.map((x) => x.name.toLowerCase()) || [];
   if (t.some((x) => x.includes("nfl") || x.includes("football"))) return "NFL";
   if (t.some((x) => x.includes("nba") || x.includes("basketball"))) return "NBA";
   if (t.some((x) => x.includes("mlb") || x.includes("baseball"))) return "MLB";
@@ -39,25 +46,36 @@ export const seatgeekAdapter: TicketAdapter = {
       if (!res.ok) throw new Error(`SG API error: ${res.status}`);
       const data = await res.json();
       const events: SGEvent[] = data.events || [];
-      return events.map((e) => ({
+      return events.map((e) => {
+        // Only sports have teams (SeatGeek flags them). Concerts list headliner + openers.
+        const home = e.performers.find((p) => p.home_team);
+        const away = e.performers.find((p) => p.away_team);
+        const isGame = !!(home && away);
+        const openers = isGame
+          ? []
+          : e.performers.filter((p) => !p.primary && !e.title.toLowerCase().includes(p.name.toLowerCase()));
+        const sport = mapSGSport(e);
+        return {
         id: generateEventId("sg", String(e.id)),
-        name: e.title,
-        sport: mapSGSport(e),
-        homeTeam: e.performers[0]?.name,
-        awayTeam: e.performers[1]?.name,
-        homeTeamLogo: e.performers[0]?.image,
-        awayTeamLogo: e.performers[1]?.image,
+        name: openers.length ? `${e.title} with ${openers.map((p) => p.name).join(", ")}` : e.title,
+        sport,
+        segment: isGame ? "Sports" : sport === "Concert" ? "Music" : sport === "Other" ? "Other" : "Arts & Theatre",
+        homeTeam: isGame ? home!.name : undefined,
+        awayTeam: isGame ? away!.name : undefined,
+        homeTeamLogo: isGame ? home!.image : undefined,
+        awayTeamLogo: isGame ? away!.image : undefined,
         venue: e.venue.name,
         city: e.venue.city,
         state: e.venue.state,
         country: e.venue.country || "US",
-        eventDate: e.datetime_utc,
+        eventDate: utc(e.datetime_utc),
         lowestPrice: e.stats.lowest_price,
         averagePrice: e.stats.average_price,
         url: e.url,
         source: "seatgeek",
         externalIds: { seatgeek: String(e.id) },
-      }));
+        };
+      });
     } catch (err) {
       console.error("[SeatGeek] searchEvents error:", err);
       return [];
