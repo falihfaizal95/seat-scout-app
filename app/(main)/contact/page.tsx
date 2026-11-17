@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { sendContact } from "@/lib/sendContact";
 import { Send, Mail, MessageSquare } from "lucide-react";
 
 const inputStyle: React.CSSProperties = {
@@ -20,10 +21,22 @@ const TOPICS = ["General Question", "Pricing Issue", "Bug Report", "Partnership"
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", topic: TOPICS[0], message: "" });
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setSending(true);
+    setError(null);
+    try {
+      await sendContact({ ...form, website: honeypot });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -44,7 +57,7 @@ export default function ContactPage() {
         </h1>
 
         <p style={{ marginTop: "24px", color: "#8b89a8", fontSize: "1.05rem", maxWidth: "480px", marginLeft: "auto", marginRight: "auto", lineHeight: 1.7, position: "relative", zIndex: 1, fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>
-          Have a question or found an issue? We respond to every message within 24 hours.
+          Have a question or found an issue? Send us a message and we&apos;ll get back to you.
         </p>
       </div>
 
@@ -59,7 +72,7 @@ export default function ContactPage() {
         {/* Info cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {[
-            { icon: Mail, title: "Email Us", body: "support@seatscout.com", sub: "Response within 24h" },
+            { icon: Mail, title: "Email Us", body: "support@seatscout.com", sub: "We reply as soon as we can" },
             { icon: MessageSquare, title: "Live Chat", body: "Available in-app", sub: "Mon–Fri, 9am–6pm ET" },
           ].map(({ icon: Icon, title, body, sub }) => (
             <div key={title} style={{ background: "#13121f", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "24px" }}>
@@ -79,7 +92,7 @@ export default function ContactPage() {
             <div style={{ textAlign: "center", padding: "40px 0" }}>
               <div style={{ fontSize: "3rem", marginBottom: "16px" }}>✅</div>
               <h3 style={{ fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 800, fontSize: "1.5rem", color: "#ffffff", marginBottom: "8px" }}>Message Sent!</h3>
-              <p style={{ color: "#8b89a8", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>We&apos;ll get back to you at <strong style={{ color: "#a99fff" }}>{form.email}</strong> within 24 hours.</p>
+              <p style={{ color: "#8b89a8", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>We&apos;ll get back to you at <strong style={{ color: "#a99fff" }}>{form.email}</strong> as soon as we can.</p>
             </div>
           ) : (
             <>
@@ -117,10 +130,14 @@ export default function ContactPage() {
                     onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
                 </div>
 
-                <button type="submit" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "15px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", borderRadius: "12px", border: "none", cursor: "pointer", transition: "background 0.2s" }}
+{error && (
+                  <p role="alert" style={{ color: "#f87171", fontSize: "0.88rem", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>{error}</p>
+                )}
+                <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }} />
+                <button type="submit" disabled={sending} style={{ opacity: sending ? 0.6 : 1,  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "15px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", borderRadius: "12px", border: "none", cursor: "pointer", transition: "background 0.2s" }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#6a5ae0")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#7c6cff")}>
-                  <Send size={16} /> Send Message
+                  <Send size={16} /> {sending ? "Sending…" : "Send Message"}
                 </button>
               </form>
             </>

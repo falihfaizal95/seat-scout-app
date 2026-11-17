@@ -1,14 +1,27 @@
 "use client";
 import { useState } from "react";
+import { sendContact } from "@/lib/sendContact";
 import { ChevronDown, X, Send } from "lucide-react";
 
 function ContactModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setSending(true);
+    setError(null);
+    try {
+      await sendContact({ ...form, topic: "FAQ question", website: honeypot });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -45,14 +58,14 @@ function ContactModal({ onClose }: { onClose: () => void }) {
             <div style={{ fontSize: "2.5rem", marginBottom: "12px" }}>✅</div>
             <h3 style={{ fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 800, fontSize: "1.4rem", color: "#ffffff", marginBottom: "8px" }}>Message Sent!</h3>
             <p style={{ color: "#8b89a8", fontSize: "0.95rem", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>
-              We&apos;ll get back to you at {form.email} within 24 hours.
+              We&apos;ll get back to you at {form.email} as soon as we can.
             </p>
           </div>
         ) : (
           <>
             <h3 style={{ fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 800, fontSize: "1.4rem", color: "#ffffff", marginBottom: "6px" }}>Get in Touch</h3>
             <p style={{ color: "#8b89a8", fontSize: "0.9rem", marginBottom: "28px", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>
-              Fill out the form below and we&apos;ll respond within 24 hours.
+              Fill out the form below and we&apos;ll respond as soon as we can.
             </p>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div className="contact-name-phone" style={{ display: "grid", gap: "14px" }}>
@@ -73,13 +86,18 @@ function ContactModal({ onClose }: { onClose: () => void }) {
                 <label style={{ display: "block", color: "#8b89a8", fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "6px", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>Message</label>
                 <textarea required rows={4} placeholder="How can we help you?" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} style={{ ...inputStyle, resize: "none" }} onFocus={(e) => (e.target.style.borderColor = "rgba(124,108,255,0.5)")} onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
               </div>
+              {error && (
+                <p role="alert" style={{ color: "#f87171", fontSize: "0.88rem", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>{error}</p>
+              )}
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }} />
               <button
                 type="submit"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "4px", padding: "14px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "0.95rem", borderRadius: "10px", border: "none", cursor: "pointer", transition: "background 0.2s" }}
+                disabled={sending}
+                style={{ opacity: sending ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "4px", padding: "14px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "0.95rem", borderRadius: "10px", border: "none", cursor: "pointer", transition: "background 0.2s" }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#6a5ae0")}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#7c6cff")}
               >
-                <Send size={15} /> Send Message
+                <Send size={15} /> {sending ? "Sending…" : "Send Message"}
               </button>
             </form>
           </>
@@ -92,13 +110,13 @@ function ContactModal({ onClose }: { onClose: () => void }) {
 const FAQS = [
   { q: "What is SeatScout?", a: "SeatScout is a ticket price comparison platform that aggregates listings from multiple resale marketplaces — including StubHub, SeatGeek, Ticketmaster, and more — so you can instantly find the best deal for any event without bouncing between tabs." },
   { q: "Is SeatScout free to use?", a: "Yes — SeatScout is completely free. You never pay us anything. We make money through referral partnerships with ticket platforms, not by charging you." },
-  { q: "How does SeatScout find prices so fast?", a: "We query multiple ticket marketplace APIs simultaneously and return results in real time. Our caching layer ensures popular events load instantly while keeping prices up to date." },
+  { q: "How does SeatScout find prices so fast?", a: "We pull prices from ticket site APIs where we have access (Ticketmaster and SeatGeek today) and refresh them every few minutes. For sites we can't read yet, we link you straight to that site's page for your event, and we're adding more live sources over time." },
   { q: "Which platforms does SeatScout compare?", a: "Currently we compare StubHub, SeatGeek, Ticketmaster Resale, Vivid Seats, AXS, Gametime, and TickPick. We're actively adding more partners — check back often." },
   { q: "What sports and events are covered?", a: "NFL, NBA, MLB, NHL, MLS, college sports, concerts, comedy shows, theater, and more. If it's on a major resale platform, SeatScout can find it." },
   { q: "Do I buy the ticket through SeatScout?", a: "No — SeatScout is a comparison engine. When you click a listing, you're taken directly to the partner platform to complete your purchase. Your payment info stays between you and them." },
   { q: "Are the prices shown all-in, including fees?", a: "We display all-in pricing wherever the platform supports it. Some platforms don't expose full fee breakdowns via API, so we'll always flag when a displayed price may not include service fees." },
-  { q: "How much can I actually save using SeatScout?", a: "On average, users find savings of 15–30% versus buying from the first platform they check. For high-demand events the gap between platforms can be much larger." },
-  { q: "Do I need an account to use SeatScout?", a: "Not at all. You can search and compare prices instantly without signing up. Creating an account unlocks price alerts and saved searches." },
+  { q: "How much can I actually save using SeatScout?", a: "Prices for the same game often differ from one site to the next, and for high-demand events the gap can be large. SeatScout puts every site in one place so you can check them all before you buy." },
+  { q: "Do I need an account to use SeatScout?", a: "Not at all. You can search and compare prices instantly without signing up. Accounts will unlock saved events and price alerts, which are coming soon." },
   { q: "Are the tickets on SeatScout guaranteed to be legitimate?", a: "We only surface listings from established, buyer-guaranteed marketplaces. Each partner platform carries their own guarantee — SeatScout links you to the platform's own guarantee page so you know exactly what you're covered for before you buy." },
 ];
 

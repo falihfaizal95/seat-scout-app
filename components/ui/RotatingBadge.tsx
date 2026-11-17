@@ -2,11 +2,10 @@
 import { useState, useEffect } from "react";
 
 const PHRASES = [
-  "Compare prices across 4+ platforms instantly",
+  "Compare ticket sites in one search",
   "Like Kayak, but for sports tickets",
   "Stop overpaying — find the best seat deal",
   "Ticketmaster, StubHub, SeatGeek — all in one place",
-  "Save an average of $47 per ticket",
   "Never get ripped off on tickets again",
 ];
 
@@ -26,7 +25,7 @@ export default function RotatingBadge() {
   }, []);
 
   return (
-    <div className="mb-9 inline-flex max-w-full items-center gap-3 rounded-full border border-[rgba(124,106,247,0.3)] bg-[var(--brand-dim)] px-6 py-[10px] text-[15px] font-[600] tracking-[0.3px] text-[var(--brand-light)]" style={{ minWidth: "400px", justifyContent: "center" }}>
+    <div className="inline-flex max-w-full items-center justify-center gap-2.5 rounded-full border border-[rgba(124,106,247,0.3)] bg-[var(--brand-dim)] px-4 py-2 text-[13px] font-[600] tracking-[0.2px] text-[var(--brand-light)] sm:min-w-[400px] sm:gap-3 sm:px-6 sm:py-[10px] sm:text-[15px]">
       <span className="size-[9px] shrink-0 rounded-full bg-[var(--brand-light)]" />
       <span
         style={{

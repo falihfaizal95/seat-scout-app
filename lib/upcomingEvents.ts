@@ -1,7 +1,13 @@
 /**
- * Fetches real upcoming popular sports events (NBA + NHL + MLB) for the next
- * 30 days using the ESPN public hidden API, enriched with Ticketmaster images + prices.
+ * Fetches real upcoming popular games (NBA, NHL, MLB, World Cup) for the next
+ * week from ESPN's public API, linked to the same game on Ticketmaster.
+ *
+ * Rules that keep cards honest:
+ *  - No made-up prices. Only Ticketmaster's real minimum, when it gives one.
+ *  - No stock photos. Team games show both teams' logos (see lib/teamLogos.ts);
+ *    a Ticketmaster photo is only used when that event is verified to be this game.
  */
+import { teamInfo, type TeamBadge } from "./teamLogos";
 
 const TM_BASE = "https://app.ticketmaster.com/discovery/v2";
 const TM_KEY = process.env.TICKETMASTER_API_KEY || "";
@@ -9,7 +15,9 @@ const TM_KEY = process.env.TICKETMASTER_API_KEY || "";
 interface ESPNTeam {
   abbreviation: string;
   displayName: string;
-  logos: { href: string }[];
+  shortDisplayName?: string;
+  color?: string;
+  logo?: string;
 }
 
 interface ESPNGame {
@@ -29,10 +37,14 @@ export interface HomepageEvent {
   title: string;
   isoDate: string;
   location: string;
-  imageUrl: string;
-  sport: "NBA" | "NHL" | "MLB" | "MLS";
+  /** A photo of this exact event, or undefined (never a stock photo). */
+  imageUrl?: string;
+  /** Both teams, so the card can show their logos. */
+  teams?: { home: TeamBadge; away: TeamBadge };
+  sport: "NBA" | "NHL" | "MLB" | "MLS" | "NFL";
   tmUrl?: string;
-  prices: { platform: string; price: number }[];
+  /** Ticketmaster's real minimum price, when Ticketmaster provides one. */
+  lowestPrice?: number;
 }
 
 const LEAGUES = [
@@ -45,7 +57,7 @@ const LEAGUES = [
 async function fetchESPNSchedule(espnPath: string, dateStr: string): Promise<ESPNGame[]> {
   const url = `https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${dateStr}`;
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const json = await res.json();
     return (json.events as ESPNGame[]) ?? [];
@@ -72,65 +84,64 @@ interface TMResult {
   tmUrl?: string;
 }
 
+const nick = (t: ESPNTeam) => (t.shortDisplayName ?? t.displayName.split(" ").pop() ?? "").toLowerCase();
+
+type TMImage = { url: string; ratio?: string; width: number; height: number };
+
+/** The largest landscape image Ticketmaster has for an event. */
+export function bestLandscape(images?: TMImage[]): string | undefined {
+  const imgs = images ?? [];
+  const wide = imgs.filter((i) => i.ratio === "16_9" && i.width >= 500);
+  return [...(wide.length ? wide : imgs)].sort((a, b) => b.width * b.height - a.width * a.height)[0]?.url;
+}
+
 async function enrichWithTicketmaster(game: ESPNGame): Promise<TMResult> {
   if (!TM_KEY) return {};
   const comp = game.competitions[0];
-  const home = comp?.competitors.find((c) => c.homeAway === "home")?.team.displayName ?? "";
-  const away = comp?.competitors.find((c) => c.homeAway === "away")?.team.displayName ?? "";
-  const keyword = `${home} ${away}`.trim();
-  const dateFrom = new Date(game.date).toISOString().split("T")[0];
+  const home = comp?.competitors.find((c) => c.homeAway === "home")?.team;
+  const away = comp?.competitors.find((c) => c.homeAway === "away")?.team;
+  if (!home || !away) return {};
+  const day = new Date(game.date).toISOString().split("T")[0];
 
   const url = new URL(`${TM_BASE}/events.json`);
   url.searchParams.set("apikey", TM_KEY);
-  url.searchParams.set("keyword", keyword);
+  url.searchParams.set("keyword", home.displayName);
   url.searchParams.set("classificationName", "sports");
-  url.searchParams.set("startDateTime", `${dateFrom}T00:00:00Z`);
-  url.searchParams.set("endDateTime", `${dateFrom}T23:59:59Z`);
-  url.searchParams.set("size", "5");
+  url.searchParams.set("startDateTime", `${day}T00:00:00Z`);
+  url.searchParams.set("endDateTime", `${day}T23:59:59Z`);
+  url.searchParams.set("size", "10");
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    // Cached so a burst of homepage visits doesn't hit Ticketmaster's rate limit
+    const res = await fetch(url.toString(), { next: { revalidate: 900 } });
     if (!res.ok) return {};
     const data = await res.json();
     const events: {
-      images?: { url: string; width: number; height: number }[];
+      name: string;
+      images?: TMImage[];
       priceRanges?: { min: number }[];
       url?: string;
+      _embedded?: { attractions?: { name: string }[] };
     }[] = data._embedded?.events ?? [];
-    if (!events.length) return {};
-    const ev = events[0];
-    const best = [...(ev.images ?? [])].sort((a, b) => b.width * b.height - a.width * a.height)[0];
-    return { imageUrl: best?.url, lowestPrice: ev.priceRanges?.[0]?.min, tmUrl: ev.url };
+
+    // Only accept an event that is clearly this game: both team names appear
+    const want = [nick(home), nick(away)];
+    const ev = events.find((e) => {
+      const text = [e.name, ...(e._embedded?.attractions ?? []).map((a) => a.name)].join(" ").toLowerCase();
+      return want.every((w) => w && text.includes(w));
+    });
+    if (!ev) return {};
+    return { imageUrl: bestLandscape(ev.images), lowestPrice: ev.priceRanges?.[0]?.min, tmUrl: ev.url };
   } catch {
     return {};
   }
 }
 
-const FALLBACK_BASE: Record<string, number> = { NBA: 145, NHL: 120, MLB: 85, MLS: 350 };
-
-export function buildPrices(base: number, gameId: string) {
-  let h = 2166136261;
-  for (let i = 0; i < gameId.length; i++) {
-    h ^= gameId.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  h = h >>> 0;
-  const frac = (shift: number) => 0.93 + (((h >> shift) & 0xff) / 255) * 0.15;
-  const raw = [
-    { platform: "Ticketmaster", mult: frac(0)  },
-    { platform: "StubHub",      mult: frac(8)  },
-    { platform: "SeatGeek",     mult: frac(16) },
-    { platform: "Vivid Seats",  mult: frac(24) },
-  ];
-  return raw.map(({ platform, mult }) => ({ platform, price: Math.round(base * mult) }));
+/** Card badge for an ESPN competitor; pro teams use the verified logo map. */
+function badge(team?: ESPNTeam): TeamBadge {
+  const info = teamInfo(team?.displayName);
+  return { name: team?.displayName ?? "", logo: info?.logo ?? team?.logo, color: info?.color ?? team?.color };
 }
-
-const SPORT_FALLBACK: Record<string, string> = {
-  NBA: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=800&q=80",
-  NHL: "https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?w=800&q=80",
-  MLB: "https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=800&q=80",
-  MLS: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80",
-};
 
 export async function getUpcomingPopularEvents(count = 3): Promise<HomepageEvent[]> {
   const now = new Date();
@@ -175,7 +186,7 @@ export async function getUpcomingPopularEvents(count = 3): Promise<HomepageEvent
       const comp = game.competitions[0];
       const venue = comp?.venue;
       const tm = await enrichWithTicketmaster(game);
-      const base = tm.lowestPrice ?? FALLBACK_BASE[sport];
+      const side = (h: "home" | "away") => comp?.competitors.find((c) => c.homeAway === h)?.team;
       const location = [venue?.fullName, venue?.address?.city, venue?.address?.state]
         .filter(Boolean).join(", ");
       return {
@@ -183,10 +194,11 @@ export async function getUpcomingPopularEvents(count = 3): Promise<HomepageEvent
         title: game.name,
         isoDate: game.date,
         location: location || "TBD",
-        imageUrl: tm.imageUrl ?? SPORT_FALLBACK[sport],
+        imageUrl: tm.imageUrl,
+        teams: { home: badge(side("home")), away: badge(side("away")) },
         sport,
         tmUrl: tm.tmUrl,
-        prices: buildPrices(base, game.id),
+        lowestPrice: tm.lowestPrice,
       } satisfies HomepageEvent;
     })
   );

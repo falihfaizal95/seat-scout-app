@@ -165,11 +165,11 @@ export default function NearbyEventsSection({ initialEvents }: Props) {
       {showLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-[480px] rounded-[20px] border border-[var(--card-border)] bg-[var(--card)] shimmer" />
+            <div key={i} className="h-[420px] rounded-[20px] border border-[var(--card-border)] bg-[var(--card)] shimmer" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           {events.map((event) => (
             <HomepageEventCard key={event.id} event={event} />
           ))}

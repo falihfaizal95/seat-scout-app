@@ -42,9 +42,18 @@ export interface TicketListing {
   isMock?: boolean;
 }
 
+/** Where to check an event on each site. `live` means we have real prices from that site. */
+export interface PlatformLink {
+  platform: Platform;
+  url: string;
+  live: boolean;
+}
+
 export interface AggregatedTickets {
   eventId: string;
+  eventName?: string;
   listings: TicketListing[];
+  links: PlatformLink[];
   lowestPrice: number | null;
   averagePrice: number | null;
   platformsAvailable: Platform[];

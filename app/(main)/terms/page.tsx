@@ -37,7 +37,7 @@ export default function TermsPage() {
         <div style={{ padding: "clamp(28px, 5vw, 40px)", background: "linear-gradient(135deg, #1a1838 0%, #151330 100%)", border: "1px solid rgba(124,108,255,0.25)", borderRadius: "16px", textAlign: "center", position: "relative", overflow: "hidden" }}>
           <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(124,108,255,0.1) 0%, transparent 60%)", pointerEvents: "none" }} />
           <h3 style={{ fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 800, fontSize: "1.3rem", color: "#ffffff", textTransform: "uppercase", position: "relative" }}>Questions About Our Terms?</h3>
-          <p style={{ marginTop: "8px", color: "#8b89a8", fontSize: "0.92rem", position: "relative", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>We&apos;re happy to clarify anything. Reach out and we&apos;ll get back to you within 24 hours.</p>
+          <p style={{ marginTop: "8px", color: "#8b89a8", fontSize: "0.92rem", position: "relative", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>We&apos;re happy to clarify anything. Reach out and we&apos;ll get back to you.</p>
           <Link href="/contact" style={{ display: "inline-block", marginTop: "20px", padding: "11px 28px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "0.92rem", borderRadius: "30px", textDecoration: "none", position: "relative" }}>Contact Us</Link>
         </div>
       </div>

@@ -26,15 +26,15 @@ export default function HeroSearch() {
             border: "1.5px solid rgba(255,255,255,0.9)",
           }}
         >
-          <Search className="ml-4 size-5 shrink-0" style={{ color: "rgba(255,255,255,0.5)" }} />
+          <Search className="ml-3 size-5 shrink-0 sm:ml-4" style={{ color: "rgba(255,255,255,0.5)" }} />
           <input
             type="text"
-            placeholder="Search for teams, games, or events..."
+            placeholder="Search teams, games, events…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-[16px] sm:text-[17px] outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[16px] sm:text-[17px] outline-none"
             style={{
-              padding: "16px 14px",
+              padding: "14px 10px",
               color: "#ffffff",
               fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
               caretColor: "#ffffff",
@@ -45,7 +45,7 @@ export default function HeroSearch() {
             className="font-syne shrink-0 rounded-[18px] font-[700] text-white transition-all hover:shadow-[0_6px_20px_rgba(124,106,247,0.45)] active:scale-[0.97]"
             style={{
               background: "linear-gradient(135deg, #7c6cff 0%, #9b8fff 100%)",
-              padding: "16px 20px",
+              padding: "14px 18px",
               fontSize: "15px",
               whiteSpace: "nowrap",
               letterSpacing: "0.01em",

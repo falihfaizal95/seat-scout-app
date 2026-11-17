@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Search, BarChart3, Ticket, Users, TrendingDown, Globe } from "lucide-react";
 
 const STATS = [
-  { value: "4+",    label: "Platforms Compared" },
-  { value: "50K+",  label: "Happy Users"        },
-  { value: "$2.5M", label: "Total Saved"        },
-  { value: "100%",  label: "Free to Use"        },
+  { value: "7",    label: "Ticket Sites"        },
+  { value: "4",    label: "Major Leagues"       },
+  { value: "$0",   label: "Fees From SeatScout" },
+  { value: "100%", label: "Free to Use"         },
 ];
 
 const VALUES = [
@@ -91,7 +91,7 @@ export default function AboutPage() {
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", color: "#8b89a8", fontSize: "0.97rem", lineHeight: 1.8, fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif" }}>
             <p>It started with a $400 mistake. Our founder bought floor seats to an NBA playoff game on the first platform he checked — only to find the same seats on a different site for $260. That &apos;s $140 gone because of one tab.</p>
-            <p>So we built SeatScout: a single page that pulls live listings from Ticketmaster, StubHub, SeatGeek, and Vivid Seats simultaneously and sorts them by price. No accounts, no fees, no nonsense.</p>
+            <p>So we built SeatScout: a single page that brings Ticketmaster, SeatGeek, StubHub, Vivid Seats and more into one search, so you can check every site before you buy. No accounts, no fees, no nonsense.</p>
             <p>Today, thousands of fans use SeatScout every week to find the best deal before they buy. We&apos;re growing fast — and we&apos;re just getting started.</p>
           </div>
         </div>

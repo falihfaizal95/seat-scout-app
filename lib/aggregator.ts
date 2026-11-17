@@ -1,4 +1,5 @@
-import { ALL_ADAPTERS, MOCK_ADAPTERS, SEARCH_ADAPTERS } from "./adapters";
+import { PLATFORMS, platformSearchUrl } from "./platformLinks";
+import { ALL_ADAPTERS, SEARCH_ADAPTERS } from "./adapters";
 import type { NormalizedEvent, EventSearchParams } from "@/types/event";
 import type { TicketListing, AggregatedTickets } from "@/types/ticket";
 import { parseEventId, generateEventId } from "./utils";
@@ -234,13 +235,12 @@ export async function aggregateTickets(eventId: string, eventName?: string): Pro
   let allListings: TicketListing[] = [];
 
   if (source === "espn" || !platform) {
-    // ESPN events: search TM+SG by name for real prices, fill rest with estimates
-    const [tmListings, sgListings, ...mockResults] = await Promise.all([
+    // ESPN events: search Ticketmaster + SeatGeek by name for real prices only
+    const [tmListings, sgListings] = await Promise.all([
       tmListingsByName(eventName ?? ""),
       sgListingsByName(eventName ?? ""),
-      ...MOCK_ADAPTERS.map((a) => a.getTickets(externalId, eventName)),
     ]);
-    allListings = [...tmListings, ...sgListings, ...mockResults.flat()];
+    allListings = [...tmListings, ...sgListings];
   } else {
     // Direct platform lookup
     const adapters = ALL_ADAPTERS.filter((a) => a.platform === platform);
@@ -269,5 +269,13 @@ export async function aggregateTickets(eventId: string, eventName?: string): Pro
     ? Math.round((prices.reduce((a, b) => a + b, 0) / prices.length) * 100) / 100
     : null;
   const platformsAvailable = [...new Set(sorted.map((l) => l.platform))];
-  return { eventId, listings: sorted, lowestPrice, averagePrice, platformsAvailable, fetchedAt: new Date(), fromCache: false };
+
+  // A link for every site: the real event page where we have one, otherwise a search for the event
+  const links = PLATFORMS.map((p) => ({
+    platform: p,
+    url: sorted.find((l) => l.platform === p)?.buyUrl ?? platformSearchUrl(p, eventName),
+    live: platformsAvailable.includes(p),
+  }));
+
+  return { eventId, eventName, listings: sorted, links, lowestPrice, averagePrice, platformsAvailable, fetchedAt: new Date(), fromCache: false };
 }

@@ -4,12 +4,14 @@ import { useParams } from "next/navigation";
 import { Calendar, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { NormalizedEvent } from "@/types/event";
+import EventImage from "@/components/events/EventImage";
+import { matchupBadges } from "@/lib/teamLogos";
 
 const SPORT_CONFIG: Record<string, { label: string; classification: string; color: string; emoji: string }> = {
-  nba: { label: "NBA",  classification: "Basketball",       color: "#f97316", emoji: "🏀" },
-  nfl: { label: "NFL",  classification: "American Football", color: "#22c55e", emoji: "🏈" },
-  mlb: { label: "MLB",  classification: "Baseball",          color: "#ef4444", emoji: "⚾" },
-  nhl: { label: "NHL",  classification: "Ice Hockey",        color: "#38bdf8", emoji: "🏒" },
+  nba: { label: "NBA",  classification: "NBA", color: "#f97316", emoji: "🏀" },
+  nfl: { label: "NFL",  classification: "NFL", color: "#22c55e", emoji: "🏈" },
+  mlb: { label: "MLB",  classification: "MLB", color: "#ef4444", emoji: "⚾" },
+  nhl: { label: "NHL",  classification: "NHL", color: "#38bdf8", emoji: "🏒" },
 };
 
 function EventCard({ event }: { event: NormalizedEvent }) {
@@ -26,12 +28,7 @@ function EventCard({ event }: { event: NormalizedEvent }) {
         onMouseLeave={(e) => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = "rgba(255,255,255,0.07)"; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}
       >
         <div style={{ width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "#1a1830" }}>
-          {event.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={event.imageUrl} alt={event.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.75 }} />
-          ) : (
-            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem", opacity: 0.15 }}>🎟️</div>
-          )}
+          <EventImage src={event.imageUrl} alt={event.name} teams={matchupBadges(event.homeTeam, event.awayTeam)} emoji="🎟️" accent="#7c6cff" />
           {event.lowestPrice && (
             <div style={{ position: "absolute", bottom: "10px", right: "10px", background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "6px", padding: "3px 9px", fontSize: "0.75rem", fontWeight: 700, color: "#22c55e" }}>
               From ${event.lowestPrice}
@@ -42,7 +39,7 @@ function EventCard({ event }: { event: NormalizedEvent }) {
           {hasTeams ? (
             <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
               <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.awayTeam}</span>
-              <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#7b799a", textTransform: "uppercase", letterSpacing: "0.08em" }}>vs</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#7b799a", textTransform: "uppercase", letterSpacing: "0.08em" }}>at</span>
               <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.homeTeam}</span>
             </div>
           ) : (
@@ -127,7 +124,7 @@ export default function SportPage() {
 
       <div style={{ maxWidth: "1300px", margin: "0 auto", padding: "0 clamp(16px,4vw,48px) 100px" }}>
         {loading && (
-          <div className="sport-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px" }}>
+          <div className="sport-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: "16px" }}>
             {Array.from({ length: 8 }).map((_, i) => <EventCardSkeleton key={i} />)}
           </div>
         )}
@@ -141,16 +138,16 @@ export default function SportPage() {
           </div>
         )}
         {!loading && events.length > 0 && (
-          <div className="sport-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px" }}>
+          <div className="sport-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: "16px" }}>
             {events.map((event) => <EventCard key={event.id} event={event} />)}
           </div>
         )}
       </div>
 
       <style>{`
-        @media (max-width: 1100px) { .sport-grid { grid-template-columns: repeat(3,1fr) !important; } }
-        @media (max-width: 800px)  { .sport-grid { grid-template-columns: repeat(2,1fr) !important; } }
-        @media (max-width: 480px)  { .sport-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 1100px) { .sport-grid { grid-template-columns: repeat(3,minmax(0,1fr)) !important; } }
+        @media (max-width: 800px)  { .sport-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } }
+        @media (max-width: 480px)  { .sport-grid { grid-template-columns: minmax(0,1fr) !important; } }
       `}</style>
     </div>
   );

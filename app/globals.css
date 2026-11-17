@@ -26,7 +26,11 @@
 }
 
 /* ─── Base ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Reset lives in the base layer so Tailwind utilities (p-*, m-*, gap-*) can override it.
+   Unlayered, it silently beat every padding/margin class on the site. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+}
 
 /* ─── Tailwind v4 missing utility fixes ───────────────────────────────── */
 .mx-auto { margin-left: auto !important; margin-right: auto !important; }

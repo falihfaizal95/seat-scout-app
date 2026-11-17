@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { prisma } from "@/lib/prisma";
 
+// Clerk webhook handler — syncs users to our DB.
+// Every request must carry a valid Svix signature from Clerk; anything else is rejected.
 export async function POST(req: NextRequest) {
-  try {
-    const payload = await req.json();
-    const { type, data } = payload;
+  const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET || process.env.CLERK_WEBHOOK_SECRET;
+  if (!signingSecret) {
+    console.error("[Webhook] CLERK_WEBHOOK_SIGNING_SECRET is not set; refusing webhook");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+  }
 
-    if (type === "user.created" || type === "user.updated") {
-      const { id, email_addresses, first_name, last_name, image_url, unsafe_metadata } = data;
+  let payload;
+  try {
+    payload = await verifyWebhook(req, { signingSecret });
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  try {
+    if (payload.type === "user.created" || payload.type === "user.updated") {
+      const { id, email_addresses, first_name, last_name, image_url, unsafe_metadata } = payload.data;
       const email = email_addresses?.[0]?.email_address;
       if (!email) return NextResponse.json({ error: "No email" }, { status: 400 });
 
@@ -35,8 +48,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (type === "user.deleted") {
-      await prisma.user.deleteMany({ where: { clerkId: data.id } });
+    if (payload.type === "user.deleted" && payload.data.id) {
+      await prisma.user.deleteMany({ where: { clerkId: payload.data.id } });
     }
 
     return NextResponse.json({ received: true });

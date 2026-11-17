@@ -17,7 +17,7 @@ export default function RefreshEventsButton() {
     <button
       onClick={handleRefresh}
       disabled={isPending}
-      className="font-syne inline-flex items-center gap-3 rounded-[12px] bg-[var(--brand)] px-10 py-[18px] text-[17px] font-[700] text-white transition-all hover:bg-[var(--brand-light)] hover:shadow-[0_8px_24px_rgba(124,106,247,0.35)] disabled:opacity-60"
+      className="font-syne inline-flex items-center gap-3 rounded-[12px] bg-[var(--brand)] px-7 py-[15px] text-[16px] sm:px-10 sm:py-[18px] sm:text-[17px] font-[700] text-white transition-all hover:bg-[var(--brand-light)] hover:shadow-[0_8px_24px_rgba(124,106,247,0.35)] disabled:opacity-60"
     >
       <RefreshCw size={18} className={isPending ? "animate-spin" : ""} />
       {isPending ? "Loading..." : "Load More Events"}

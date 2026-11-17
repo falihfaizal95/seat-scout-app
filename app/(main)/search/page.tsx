@@ -4,6 +4,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Calendar, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { NormalizedEvent } from "@/types/event";
+import EventImage from "@/components/events/EventImage";
+import { matchupBadges } from "@/lib/teamLogos";
+import { matchProTeams } from "@/lib/proTeams";
 
 const POPULAR = ["Lakers", "Yankees", "Cowboys", "Warriors"];
 
@@ -67,11 +70,7 @@ function EventCard({ event }: { event: NormalizedEvent }) {
       >
         {/* Banner */}
         <div style={{ width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "#1a1830", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {event.imageUrl ? (
-            <img src={event.imageUrl} alt={event.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
-          ) : (
-            <span style={{ fontSize: "3rem", opacity: 0.15 }}>🎟️</span>
-          )}
+          <EventImage src={event.imageUrl} alt={event.name} teams={matchupBadges(event.homeTeam, event.awayTeam)} emoji="🎟️" accent="#7c6cff" />
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.04) 0%, transparent 60%)" }} />
           <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "5px", background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "4px 9px", fontSize: "0.7rem", fontWeight: 600, color: "#ffffff", letterSpacing: "0.03em" }}>
             <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
@@ -88,9 +87,10 @@ function EventCard({ event }: { event: NormalizedEvent }) {
         <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
           {hasTeams ? (
             <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-              <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.homeTeam}</span>
-              <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#7b799a", letterSpacing: "0.08em", textTransform: "uppercase" }}>vs</span>
+              {/* Away team first, matching the logo order (away @ home) */}
               <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.awayTeam}</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#7b799a", letterSpacing: "0.08em", textTransform: "uppercase" }}>at</span>
+              <span className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", lineHeight: 1.1 }}>{event.homeTeam}</span>
             </div>
           ) : (
             <h3 className="font-syne" style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff", marginBottom: "8px", lineHeight: 1.2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -153,10 +153,14 @@ function SearchContent() {
     setSearched(true);
     setFilter("all");
     try {
-      const res  = await fetch(`/api/events/search?q=${encodeURIComponent(q)}`);
-      const json = await res.json() as { data?: NormalizedEvent[]; error?: string };
+      // Pro-team nicknames ("hawks") go to the exact-team search so college and
+      // minor-league teams with the same nickname don't crowd out the pro team.
+      const endpoint = matchProTeams(q).length ? "/api/search" : "/api/events/search";
+      const res  = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`);
+      const json = await res.json() as { data?: NormalizedEvent[]; events?: NormalizedEvent[]; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Search failed");
-      setEvents(Array.isArray(json.data) ? json.data : []);
+      const list = json.data ?? json.events;
+      setEvents(Array.isArray(list) ? list : []);
     } catch {
       setError("Search failed. Please try again.");
     } finally {
@@ -188,23 +192,25 @@ function SearchContent() {
             onFocusCapture={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(124,108,255,0.5)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 3px rgba(124,108,255,0.12)"; }}
             onBlurCapture={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
           >
-            <span style={{ padding: "0 20px 0 24px", color: "#7b799a", flexShrink: 0 }}>
+            <span className="search-icon" style={{ padding: "0 20px 0 24px", color: "#7b799a", flexShrink: 0 }}>
               <Search size={20} />
             </span>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search teams, artists, events, venues..."
-              style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#ffffff", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", fontSize: "1.1rem", padding: "22px 0", caretColor: "#7c6cff" }}
+              placeholder="Search teams, artists, events…"
+              className="search-input"
+              style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", color: "#ffffff", fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", fontSize: "1.1rem", padding: "22px 0", caretColor: "#7c6cff" }}
             />
             <button
               type="submit"
+              className="search-btn"
               style={{ margin: "8px", padding: "16px 32px", background: "#7c6cff", color: "#ffffff", fontFamily: "var(--font-syne), 'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", border: "none", borderRadius: "10px", cursor: "pointer", whiteSpace: "nowrap", letterSpacing: "0.02em", transition: "background 0.2s" }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#6a5ae0")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#7c6cff")}
             >
-              Search Deals →
+              <span className="search-btn-long">Search Deals →</span><span className="search-btn-short">Search</span>
             </button>
           </div>
         </form>
@@ -260,7 +266,7 @@ function SearchContent() {
         )}
 
         {loading && (
-          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px" }}>
             {Array.from({ length: 8 }).map((_, i) => <EventCardSkeleton key={i} />)}
           </div>
         )}
@@ -282,7 +288,7 @@ function SearchContent() {
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", alignItems: "stretch" }}>
+          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px", alignItems: "stretch" }}>
             {filtered.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -319,9 +325,17 @@ function SearchContent() {
           flex: 1;
           transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         }
-        @media (max-width: 1100px) { .search-grid { grid-template-columns: repeat(3, 1fr) !important; } }
-        @media (max-width: 800px)  { .search-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 520px)  { .search-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 1100px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+        @media (max-width: 800px)  { .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+        @media (max-width: 520px)  { .search-grid { grid-template-columns: minmax(0, 1fr) !important; } }
+        .search-btn-short { display: none; }
+        @media (max-width: 520px) {
+          .search-icon  { padding: 0 8px 0 16px !important; }
+          .search-input { font-size: 16px !important; padding: 16px 0 !important; }
+          .search-btn   { margin: 6px !important; padding: 12px 16px !important; }
+          .search-btn-long { display: none; }
+          .search-btn-short { display: inline; }
+        }
       `}</style>
     </div>
   );
@@ -333,7 +347,7 @@ export default function SearchPage() {
       <div style={{ background: "#0e0d18", minHeight: "100vh", paddingTop: "120px", paddingLeft: "48px", paddingRight: "48px" }}>
         <div style={{ maxWidth: "1300px", margin: "0 auto" }}>
           <div style={{ height: "72px", background: "rgba(255,255,255,0.05)", borderRadius: "16px", marginBottom: "40px" }} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+          <div className="search-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px" }}>
             {Array.from({ length: 8 }).map((_, i) => <EventCardSkeleton key={i} />)}
           </div>
         </div>

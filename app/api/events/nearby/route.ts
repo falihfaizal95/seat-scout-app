@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildPrices } from "@/lib/upcomingEvents";
+import { bestLandscape } from "@/lib/upcomingEvents";
 import type { HomepageEvent } from "@/lib/upcomingEvents";
+import { matchupBadges, teamInfo } from "@/lib/teamLogos";
 
 const TM_KEY = process.env.TICKETMASTER_API_KEY || "";
 const TM_BASE = "https://app.ticketmaster.com/discovery/v2";
 
-const SPORT_FALLBACK: Record<string, string> = {
-  NBA: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=800&q=80",
-  NHL: "https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?w=800&q=80",
-  MLB: "https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=800&q=80",
-};
-const FALLBACK_BASE: Record<string, number> = { NBA: 145, NHL: 120, MLB: 85 };
 
-function detectSport(name: string): "NBA" | "NHL" | "MLB" {
-  const n = name.toLowerCase();
-  if (n.includes("basketball") || n.includes("nba")) return "NBA";
-  if (n.includes("hockey") || n.includes("nhl")) return "NHL";
+function detectSport(home: string | undefined, genre: string): HomepageEvent["sport"] {
+  // A known pro team tells us the league for sure
+  const league = teamInfo(home)?.league;
+  if (league) return league;
+  const n = genre.toLowerCase();
+  if (n.includes("basketball")) return "NBA";
+  if (n.includes("hockey")) return "NHL";
+  if (n.includes("football")) return "NFL";
+  if (n.includes("soccer")) return "MLS";
   return "MLB";
 }
 
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("size", "10");
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await fetch(url.toString(), { next: { revalidate: 900 } });
     if (!res.ok) return NextResponse.json({ events: [], city });
 
     const data = await res.json();
@@ -72,30 +72,34 @@ export async function GET(req: NextRequest) {
       id: string;
       name: string;
       dates: { start: { dateTime?: string; localDate: string } };
-      images?: { url: string; width: number; height: number }[];
+      images?: { url: string; ratio?: string; width: number; height: number }[];
       priceRanges?: { min: number }[];
       url?: string;
-      _embedded?: { venues?: { name: string; city?: { name: string }; state?: { stateCode: string } }[] };
+      _embedded?: {
+        venues?: { name: string; city?: { name: string }; state?: { stateCode: string } }[];
+        attractions?: { name: string }[];
+      };
       classifications?: { genre?: { name: string } }[];
     }[] = data._embedded?.events ?? [];
 
     const events: HomepageEvent[] = tmEvents.slice(0, 3).map((ev) => {
       const venue = ev._embedded?.venues?.[0];
       const isoDate = ev.dates.start.dateTime ?? `${ev.dates.start.localDate}T19:00:00Z`;
-      const bestImg = [...(ev.images ?? [])].sort((a, b) => b.width * b.height - a.width * a.height)[0];
       const genre = ev.classifications?.[0]?.genre?.name ?? "";
-      const sport = detectSport(genre);
-      const base = ev.priceRanges?.[0]?.min ?? FALLBACK_BASE[sport];
+      // Ticketmaster lists the home team first
+      const [home, away] = (ev._embedded?.attractions ?? []).map((a) => a.name);
+      const sport = detectSport(home, genre);
       const location = [venue?.name, venue?.city?.name, venue?.state?.stateCode].filter(Boolean).join(", ");
       return {
         id: `tm_${ev.id}`,
         title: ev.name,
         isoDate,
         location: location || "TBD",
-        imageUrl: bestImg?.url ?? SPORT_FALLBACK[sport],
+        imageUrl: bestLandscape(ev.images),
+        teams: matchupBadges(home, away),
         sport,
         tmUrl: ev.url,
-        prices: buildPrices(base, ev.id),
+        lowestPrice: ev.priceRanges?.[0]?.min,
       };
     });
 

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { matchProTeams } from "@/lib/proTeams";
+import { teamInfo } from "@/lib/teamLogos";
 
 const TM_BASE = "https://app.ticketmaster.com/discovery/v2";
 
@@ -55,7 +57,7 @@ interface TMRawEvent {
   dates: { start: { localDate: string; localTime?: string; dateTime?: string } };
   images: Array<{ url: string; ratio?: string; width: number; height: number }>;
   priceRanges?: Array<{ min: number; max: number }>;
-  classifications?: Array<{ segment?: { name: string }; genre?: { name: string } }>;
+  classifications?: Array<{ segment?: { name: string }; genre?: { name: string }; subGenre?: { name: string } }>;
   _embedded?: {
     venues?: Array<{ name: string; city: { name: string }; state?: { stateCode: string }; country?: { countryCode: string } }>;
     attractions?: TMAttr[];
@@ -85,20 +87,55 @@ export async function GET(req: NextRequest) {
   const detectedSport = detectSportClassification(q);
   const effectiveClassification = classificationName || detectedSport || "";
 
-  const url = new URL(`${TM_BASE}/events.json`);
-  if (q.trim()) url.searchParams.set("keyword", q);
-  url.searchParams.set("size", q.trim() ? "20" : "50");
-  url.searchParams.set("page", page);
-  url.searchParams.set("apikey", apiKey);
-  url.searchParams.set("segmentName", "Sports");
-  url.searchParams.set("sort", "date,asc");
-  if (effectiveClassification) url.searchParams.set("classificationName", effectiveClassification);
+  const fetchTM = async (params: Record<string, string>) => {
+    const url = new URL(`${TM_BASE}/events.json`);
+    url.searchParams.set("apikey", apiKey);
+    url.searchParams.set("segmentName", "Sports");
+    url.searchParams.set("sort", "date,asc");
+    for (const [k, v] of Object.entries(params)) if (v) url.searchParams.set(k, v);
+    const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+    if (!res.ok) throw new Error(`TM API error: ${res.status}`);
+    return res.json();
+  };
+
+  // A pro-team nickname ("hawks", "red sox") searches exactly that team in its league,
+  // so we don't return college or minor-league teams with a similar name.
+  const proTeams = classificationName ? [] : matchProTeams(q);
+  // League pages (NBA/NFL/MLB/NHL): Ticketmaster's league search also returns minor
+  // leagues and FIBA, so we fetch more and keep only that league's games.
+  const isLeague = ["NBA", "NFL", "MLB", "NHL", "MLS", "WNBA"].includes(classificationName);
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) throw new Error(`TM API error: ${res.status}`);
-    const data = await res.json();
-    const rawEvents: TMRawEvent[] = data._embedded?.events ?? [];
+    let rawEvents: TMRawEvent[];
+    let data: { page?: { number?: number; totalPages?: number } } = {};
+    if (proTeams.length) {
+      const perTeam = await Promise.all(proTeams.map(async (t) => {
+        const d = await fetchTM({ keyword: t.name, classificationName: t.league, size: "20" });
+        const evs: TMRawEvent[] = d._embedded?.events ?? [];
+        return evs.filter((e) => (e._embedded?.attractions ?? []).some((a) => a.name === t.name));
+      }));
+      const startOf = (e: TMRawEvent) => e.dates.start.dateTime ?? e.dates.start.localDate;
+      rawEvents = perTeam.flat().sort((a, b) => startOf(a).localeCompare(startOf(b)));
+    } else if (isLeague) {
+      // Off-season the first results are tours and gift cards, so page through
+      // (Ticketmaster allows up to 1,000 results) until we have enough real games.
+      const isGame = (e: TMRawEvent) =>
+        e.classifications?.[0]?.subGenre?.name === classificationName && (e._embedded?.attractions?.length ?? 0) >= 2;
+      rawEvents = [];
+      for (let p = 0; p < 5 && rawEvents.filter(isGame).length < 20; p++) {
+        const d = await fetchTM({ size: "200", page: String(p), classificationName });
+        rawEvents.push(...(d._embedded?.events ?? []));
+        if (p + 1 >= (d.page?.totalPages ?? 0)) break;
+      }
+    } else {
+      data = await fetchTM({
+        keyword: q.trim(),
+        size: q.trim() ? "20" : "50",
+        page,
+        classificationName: effectiveClassification,
+      });
+      rawEvents = (data as { _embedded?: { events?: TMRawEvent[] } })._embedded?.events ?? [];
+    }
 
     const events = rawEvents.map((e) => {
       const venue = e._embedded?.venues?.[0];
@@ -115,7 +152,8 @@ export async function GET(req: NextRequest) {
       return {
         id: `tm_${e.id}`, name: e.name, sport: genre || segment, segment, league: genre,
         homeTeam: homeAttr?.name, awayTeam: awayAttr?.name,
-        homeTeamLogo: bestAttrImage(homeAttr), awayTeamLogo: bestAttrImage(awayAttr),
+        homeTeamLogo: teamInfo(homeAttr?.name)?.logo ?? bestAttrImage(homeAttr),
+        awayTeamLogo: teamInfo(awayAttr?.name)?.logo ?? bestAttrImage(awayAttr),
         venue: venue?.name ?? "TBD", city: venue?.city?.name ?? "",
         state: venue?.state?.stateCode, country: venue?.country?.countryCode ?? "US",
         eventDate: dateStr, imageUrl: image,
@@ -125,9 +163,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const sportsFiltered = detectedSport ? events.filter((e) => e.segment === "Sports") : events;
+    const leagueOnly = isLeague
+      ? events.filter((e, i) => rawEvents[i].classifications?.[0]?.subGenre?.name === classificationName && e.homeTeam && e.awayTeam)
+      : events;
+    const sportsFiltered = detectedSport || proTeams.length ? leagueOnly.filter((e) => e.segment === "Sports") : events;
     const seen = new Set<string>();
-    const filteredEvents = sportsFiltered.filter((e) => {
+    const filteredEvents = (detectedSport || proTeams.length ? sportsFiltered : leagueOnly).filter((e) => {
       const dateDay = e.eventDate?.slice(0, 10) ?? "";
       const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
       const key = e.homeTeam && e.awayTeam ? `${norm(e.homeTeam)}|${norm(e.awayTeam)}|${dateDay}` : `${norm(e.name)}|${dateDay}`;
